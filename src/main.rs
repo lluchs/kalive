@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use axum::{
     extract::{Query, State},
     response::{IntoResponse, Response},
@@ -9,9 +9,9 @@ use axum::{
 };
 use chrono::Utc;
 use hyper::StatusCode;
-use kalive_api::{trias, Departure, Location};
+use kalive_api::trias;
 use serde_derive::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use tokio::net::TcpListener;
 use tower_http::validate_request::ValidateRequestHeaderLayer;
 
@@ -66,7 +66,7 @@ struct StopsParams {
 async fn get_stops(
     Query(params): Query<StopsParams>,
     State(state): State<Arc<AppState>>,
-) -> Result<Json<Vec<Location>>, AppError> {
+) -> Result<Json<Value>, AppError> {
     let timestamp = Utc::now();
     let req_xml = trias::format_location_information_request(
         timestamp,
@@ -84,7 +84,8 @@ async fn get_stops(
         .await?;
 
     let res_xml = res.text().await?;
-    Ok(Json(trias::parse_location_information_response(&res_xml)?))
+    let stops = trias::parse_location_information_response(&res_xml)?;
+    Ok(Json(json!({ "stops": stops })))
 }
 
 #[derive(Deserialize)]
@@ -95,7 +96,7 @@ struct DepartureParams {
 async fn get_departures(
     Query(params): Query<DepartureParams>,
     State(state): State<Arc<AppState>>,
-) -> Result<Json<Vec<Departure>>, AppError> {
+) -> Result<Json<Value>, AppError> {
     let timestamp = Utc::now();
     let req_xml =
         trias::format_stop_event_request(timestamp, &state.config.trias_ref, &params.stop);
@@ -109,7 +110,8 @@ async fn get_departures(
         .await?;
 
     let res_xml = res.text().await?;
-    Ok(Json(trias::parse_stop_event_response(&res_xml)?))
+    let departures = trias::parse_stop_event_response(&res_xml)?;
+    Ok(Json(json!({ "departures": departures })))
 }
 
 // Make our own error that wraps `anyhow::Error`.

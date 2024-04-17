@@ -3,7 +3,7 @@ use serde_derive::Serialize;
 pub mod trias;
 
 #[derive(Serialize, Default, PartialEq, Debug)]
-pub struct Location {
+pub struct Stop {
     pub id: String,
     pub name: String,
     pub lat: f32,

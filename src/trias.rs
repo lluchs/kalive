@@ -5,7 +5,7 @@ use quick_xml::events::{BytesText, Event};
 use quick_xml::reader::Reader;
 use quick_xml::writer::Writer;
 
-use crate::{Departure, Location};
+use crate::{Departure, Stop};
 
 const STOP_EVENT_REQUEST_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <Trias version="1.1" xmlns="http://www.vdv.de/trias" xmlns:siri="http://www.siri.org.uk/siri" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -180,10 +180,10 @@ pub fn format_location_information_request(
 }
 
 /// Parse a TRIAS LocationInformationResponse XML.
-pub fn parse_location_information_response(xml: &str) -> Result<Vec<Location>> {
+pub fn parse_location_information_response(xml: &str) -> Result<Vec<Stop>> {
     let mut reader = Reader::from_str(xml);
     let mut locations = Vec::new();
-    let mut current_location: Option<Location> = None;
+    let mut current_location: Option<Stop> = None;
     let mut in_location = 0;
     let mut in_text = false;
     let mut current_text: Option<String> = None;
@@ -207,7 +207,7 @@ pub fn parse_location_information_response(xml: &str) -> Result<Vec<Location>> {
                     // <Location> is weirdly nested
                     in_location += 1;
                     if in_location == 1 {
-                        current_location = Some(Location::default());
+                        current_location = Some(Stop::default());
                     }
                 }
                 b"Text" | b"StopPointRef" | b"Longitude" | b"Latitude" | b"PtMode" => {
@@ -419,14 +419,14 @@ mod tests {
         assert_eq!(
             &locations,
             &[
-                Location {
+                Stop {
                     id: "de:08212:1001".to_string(),
                     name: "Durlacher Tor/KIT-Campus Süd (U)".to_string(),
                     lat: 49.00893,
                     long: 8.41711,
                     modes: ["rail".to_string(), "tram".to_string()].to_vec(),
                 },
-                Location {
+                Stop {
                     id: "de:08212:3".to_string(),
                     name: "Durlacher Tor/KIT-Campus Süd".to_string(),
                     lat: 49.00909,
