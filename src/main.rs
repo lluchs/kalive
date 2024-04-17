@@ -30,7 +30,11 @@ struct AppState {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenvy::dotenv()?;
+    if let Err(err) = dotenvy::dotenv() {
+        if !err.not_found() {
+            bail!("dotenvy: {}", err);
+        }
+    }
     let config: Config = envy::from_env()?;
     let listen_url = config.listen_url.clone();
     let api_secret = config.api_secret.clone();
