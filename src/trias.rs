@@ -72,7 +72,7 @@ pub fn parse_stop_event_response(xml: &str) -> Result<Vec<Departure>> {
         ($prop:ident) => {
             if let Some(ref mut dep) = current_departure {
                 if let Some(text) = current_text.take() {
-                    dep.$prop = text;
+                    dep.$prop = text.into();
                 }
             }
         };
