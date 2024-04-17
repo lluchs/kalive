@@ -85,11 +85,11 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         var id = item.getId();
 
         if (id == ITEM_LOCATION) {
-            SettingsStorage.setUseLocation(item.isEnabled());
+            SettingsStorage.setUseLocation((item as WatchUi.ToggleMenuItem).isEnabled());
             return;
         }
         else if (id == ITEM_VIBRATE) {
-            SettingsStorage.setVibrateOnResponse(item.isEnabled());
+            SettingsStorage.setVibrateOnResponse((item as WatchUi.ToggleMenuItem).isEnabled());
             return;
         }
         else if (id == ITEM_MAX_STOPS) {
@@ -130,7 +130,6 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
 
     function onBack() {
         WatchUi.popView(WatchUi.SLIDE_RIGHT);
-        return true;
     }
 
     //

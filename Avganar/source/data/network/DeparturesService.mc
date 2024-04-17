@@ -13,6 +13,7 @@
 
 using Toybox.Communications;
 using Toybox.WatchUi;
+import Toybox.Lang;
 
 //! Requests and handles departure data.
 class DeparturesService {
@@ -68,7 +69,7 @@ class DeparturesService {
 
     // receive
 
-    function onReceiveDepartures(responseCode, data) {
+    function onReceiveDepartures(responseCode as Number, data as Null or Dictionary or String) as Void {
         DeparturesService.isRequesting = false;
 
         if (responseCode != ResponseError.HTTP_OK) {

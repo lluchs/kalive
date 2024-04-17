@@ -60,7 +60,6 @@ class RadioMenuDelegate extends WatchUi.Menu2InputDelegate {
 
     function onBack() {
         WatchUi.popView(WatchUi.SLIDE_RIGHT);
-        return true;
     }
 
 }

@@ -126,7 +126,6 @@ class OptionsMenuDelegate extends WatchUi.Menu2InputDelegate {
 
     function onBack() {
         WatchUi.popView(WatchUi.SLIDE_BLINK);
-        return true;
     }
 
 }
