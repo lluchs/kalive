@@ -101,7 +101,11 @@ pub fn parse_stop_event_response(xml: &str) -> Result<Vec<Departure>> {
             }
             Event::End(e) => match e.name().as_ref() {
                 b"StopEventResult" => {
-                    departures.push(current_departure.take().unwrap());
+                    // S-Bahn S1 => S1
+                    let mut d = current_departure.take().unwrap();
+                    let line = d.line.splitn(2, ' ');
+                    d.line = line.last().unwrap().to_string();
+                    departures.push(d);
                 }
                 b"Text" => in_text = false,
                 b"PlannedBay" => set_to_text!(bay),
