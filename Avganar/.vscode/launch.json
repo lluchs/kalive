@@ -6,7 +6,7 @@
             "request": "launch",
             "name": "Run App",
             "stopAtLaunch": false,
-            "device": "fr745"
+            "device": "venu3"
         },
         {
             "type": "monkeyc",

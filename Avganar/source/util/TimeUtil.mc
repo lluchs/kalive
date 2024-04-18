@@ -13,6 +13,8 @@
 
 using Toybox.System;
 using Toybox.Time;
+using Toybox.Test;
+import Toybox.Lang;
 
 module TimeUtil {
 
@@ -20,42 +22,50 @@ module TimeUtil {
         return new Time.Moment(Time.now().value());
     }
 
-    //! Convert String on the format "YYYY-MM-DDThh:mm:ss" to Moment
-    function iso8601StrToMoment(str) {
-        if (str == null || str.length() != 19) {
-            return null;
-        }
-
+    function parseRFC3339(str as String) as Time.Moment or Null {
         var year = str.substring(0, 4).toNumber();
+        if (!str.substring(4, 5).equals("-")) { return null; }
         var month = str.substring(5, 7).toNumber();
+        if (!str.substring(7, 8).equals("-")) { return null; }
         var day = str.substring(8, 10).toNumber();
+        if (!str.substring(10, 11).equals("T")) { return null; }
         var hour = str.substring(11, 13).toNumber();
+        if (!str.substring(13, 14).equals(":")) { return null; }
         var minute = str.substring(14, 16).toNumber();
+        if (!str.substring(16, 17).equals(":")) { return null; }
         var second = str.substring(17, 19).toNumber();
-
-        var options = {
+        var tzHour = 0;
+        var tzMinute = 0;
+        var sign = 1;
+        switch (str.substring(19, 20)) {
+            case "-":
+                sign = -1;
+            case "+":
+                tzHour = sign * str.substring(20, 22).toNumber();
+                if (!str.substring(22, 23).equals(":")) { return null; }
+                tzMinute = sign * str.substring(23, 25).toNumber();
+                break;
+            case "Z":
+                break;
+            default:
+                return null;
+        }
+        
+        return Time.Gregorian.moment({
             :year => year,
             :month => month,
             :day => day,
             :hour => hour,
             :minute => minute,
             :second => second
-        };
-
-        return Time.Gregorian.moment(options);
+        }).subtract(new Time.Duration(tzHour * 3600 + tzMinute * 60));
+    
     }
 
-    function localIso8601StrToMoment(str) {
-        var moment = iso8601StrToMoment(str);
-
-        if (moment != null) {
-            // subtract timezone offset
-            var utcOffsetSec = System.getClockTime().timeZoneOffset;
-            var utcOffsetDur = new Time.Duration(utcOffsetSec);
-            moment = moment.subtract(utcOffsetDur);
-        }
-
-        return moment;
+    (:test)
+    function testParseRFC3339(logger as Test.Logger) as Boolean {
+        var parsed = parseRFC3339("2024-04-18T04:43:00Z");
+        return parsed.value() == 1713415380;
     }
 
 }

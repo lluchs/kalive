@@ -18,9 +18,6 @@ import Toybox.Lang;
 //! Requests and handles departure data.
 class DeparturesService {
 
-    // API: SL Transport 1
-    // no key, no limit
-
     hidden var _stop;
     hidden var _mode;
 
@@ -45,23 +42,18 @@ class DeparturesService {
         DeparturesService.isRequesting = true;
         WatchUi.requestUpdate();
 
-        var url = "https://transport.integration.sl.se/v1/sites/" + _stop.getId() + "/departures";
+        var url = "https://kalive-api.lwrl.de/departures";
 
         var params = {
-            // NOTE: the API seems to ignore this whenever it feels like it
-            "forecast" => _stop.getTimeWindow()
+            "stop" => _stop.getId()
         };
-
-        // NOTE: migration to 1.8.0
-        // no products saved => ´mode´ = null => request all modes
-        // (same behaviour as before)
-        if (mode != null) {
-            params["transport"] = mode;
-        }
 
         var options = {
             :method => Communications.HTTP_REQUEST_METHOD_GET,
-            :headers => { "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON }
+            :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
+            :headers => {
+                "Authorization" => "Bearer " + API_SECRET,
+            }
         };
 
         Communications.makeWebRequest(url, params, options, method(:onReceiveDepartures));
@@ -81,7 +73,7 @@ class DeparturesService {
             }
         }
         else if (!DictUtil.hasValue(data, "departures")) {
-            var errorMsg = DictUtil.get(data, "message", "no error msg");
+            var errorMsg = DictUtil.get(data, "error", "no error msg");
             _stop.setResponse(new ResponseError(errorMsg));
 
             // auto-refresh if server error
@@ -99,187 +91,54 @@ class DeparturesService {
         WatchUi.requestUpdate();
     }
 
-    hidden function _handleDeparturesResponseOk(data) {
+    hidden function _handleDeparturesResponseOk(data as Dictionary) {
         var departuresData = data["departures"];
 
         if (departuresData.size() == 0) {
             _stop.setResponse(rez(Rez.Strings.msg_i_departures_none));
         }
 
-        var modes = [
-            Departure.MODE_BUS,
-            Departure.MODE_METRO,
-            Departure.MODE_TRAIN,
-            Departure.MODE_TRAM,
-            Departure.MODE_SHIP
-        ]; // determines ordering of modes
-        var modeDepartures = {
-            modes[0] => [],
-            modes[1] => [],
-            modes[2] => [],
-            modes[3] => [],
-            modes[4] => []
-        };
-
         var maxDepartures = SettingsStorage.getMaxDepartures();
         var departureCount = maxDepartures == -1
             ? departuresData.size()
             : MathUtil.min(departuresData.size(), maxDepartures);
 
-        // departures
+        var departures = [];
 
         for (var d = 0; d < departureCount; d++) {
             var departureData = departuresData[d];
 
-            var mode = departureData["line"]["transport_mode"];
-
-            // TODO: check if there are other modes we should include.
-            // for now, skip them
-            if (!modeDepartures.hasKey(mode)) {
-                continue;
-            }
-
-            var group = DictUtil.get(departureData["line"], "group_of_lines", "");
-            var line = departureData["line"]["designation"]; // TODO: or "id"?
+            var mode = 1;
+            var group = ""; // TODO: what's a group?
+            var line = departureData["line"];
             var destination = departureData["destination"];
-            var plannedDateTime = departureData["scheduled"];
-            var expectedDateTime = departureData["expected"];
-            var deviations = DictUtil.get(departureData, "deviations", []);
+            var plannedDateTime = departureData["timetable_time"];
+            var expectedDateTime = departureData["estimated_time"];
+            var deviations = []; // TODO
 
-            var isRealTime = expectedDateTime != null && !expectedDateTime.equals(plannedDateTime);
-            var moment = TimeUtil.localIso8601StrToMoment(expectedDateTime);
+            var isRealTime = expectedDateTime != null;
+            var moment = TimeUtil.parseRFC3339(plannedDateTime);
+            if (isRealTime) {
+                moment = TimeUtil.parseRFC3339(expectedDateTime);
+            }
             var deviationLevel = 0;
             var deviationMessages = [];
             var cancelled = false;
 
-            // NOTE: API limitation
-            // TODO: check if still necessary for new API
-            // remove duplicate "subline" in e.g. "571X X Arlandastad"
-            if (destination.substring(0, 2).equals(StringUtil.charAt(line, line.length() - 1) + " ")) {
-                destination = destination.substring(2, destination.length());
-            }
-
-            // departure deviations
-            for (var i = 0; i < deviations.size(); i++) {
-                var msg = DictUtil.get(deviations[i], "message", null);
-                if (msg != null) {
-                    msg = _splitDeviationMessageByLang(msg); // (not often the case)
-                    deviationMessages.add(msg);
-                }
-
-                if ("CANCELLED".equals(deviations[i]["consequence"])) {
-                    cancelled = true;
-                    // don't let cancelled inform deviationLevel
-                    continue;
-                }
-
-                var level = deviations[i]["importance"];
-                if (level != null) {
-                    deviationLevel = MathUtil.max(deviationLevel, level);
-                }
-            }
-
             var departure = new Departure(mode, group, line, destination, moment,
                 deviationLevel, deviationMessages, cancelled, isRealTime);
 
-            // add to array
-            modeDepartures[mode].add(departure);
-        }
-
-        var departures = [];
-
-        for (var m = 0; m < modes.size(); m++) {
-            if (modeDepartures[modes[m]].size() != 0) {
-                departures.add(modeDepartures[modes[m]]);
-            }
+            departures.add(departure);
         }
 
         if (departures.size() != 0) {
-            _stop.setResponse(departures);
+            _stop.setResponse([departures]);
         }
         else {
             _stop.setResponse(rez(Rez.Strings.msg_i_departures_none));
         }
 
-        // stop point deviations
-
-        var stopDeviations = data["stop_deviations"];
-        var stopDeviationMessages = [];
-
-        for (var i = 0; i < stopDeviations.size(); i++) {
-            var msg = DictUtil.get(stopDeviations[i], "message", null);
-
-            if (msg == null) {
-                continue;
-            }
-
-            msg = _splitDeviationMessageByLang(msg);
-            msg = _cleanDeviationMessage(msg);
-
-            // NOTE: API limitation
-            // TODO: check if still necessary for new API
-            // sometimes we get duplicate deviation messages. skip these.
-            if (!ArrUtil.contains(stopDeviationMessages, msg)) {
-                stopDeviationMessages.add(msg);
-            }
-        }
-
-        _stop.setDeviation(stopDeviationMessages);
     }
 
-    hidden function _splitDeviationMessageByLang(msg) {
-        // NOTE: API limitation
-        // TODO: check if still necessary for new API
-        // some messages are in both Swedish and English,
-        // separated by a " * "
-
-        var langSeparator = " * ";
-        var langSplitIndex = msg.find(langSeparator);
-
-        if (langSplitIndex != null) {
-            var isSwe = isLangSwe();
-
-            msg = msg.substring(
-                isSwe ? 0 : langSplitIndex + langSeparator.length(),
-                isSwe ? langSplitIndex : msg.length());
-        }
-
-        return msg;
-    }
-
-    hidden function _cleanDeviationMessage(msg) {
-        // NOTE: API limitation
-        // remove references at the end of messages
-
-        var references = [
-            "Sök din resa på sl.se eller i appen.",
-            "För mer information, se sl.se",
-            "Se sl.se eller i appen.",
-            "Läs mer på sl.se.",
-            "Läs mer på sl.se",
-            "Se sl.se.",
-            "Se sl.se",
-            ", se sl.se",
-            "Läs mer på Trafikläget."
-        ];
-
-        for (var j = 0; j < references.size(); j++) {
-            var refStartIndex = msg.find(references[j]);
-
-            if (refStartIndex != null) {
-                // the reference is always at the end
-                msg = msg.substring(0, refStartIndex);
-                // each message will contain max one reference
-                break;
-            }
-        }
-
-        // remove space and (less common) newline endings
-        if (ArrUtil.contains([" ", "\n"], StringUtil.charAt(msg, msg.length() - 1))) {
-            msg = msg.substring(0, msg.length() - 1);
-        }
-
-        return msg;
-    }
 
 }

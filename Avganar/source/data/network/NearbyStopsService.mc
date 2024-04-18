@@ -11,23 +11,12 @@
 // You should have received a copy of the GNU General Public License along with Avgånär.
 // If not, see <https://www.gnu.org/licenses/>.
 
+import Toybox.Lang;
 using Toybox.Communications;
-using Toybox.Lang;
 using Toybox.WatchUi;
 
 // Requests and handles stop data.
 module NearbyStopsService {
-
-    // API: SL Nearby Stops 2
-    // Bronze: 10_000/month, 30/min
-
-    // edges of the operator zone, with an extra 2 km offset
-    const _BOUNDS_SOUTH = 58.783223; // Ankarudden (Nynäshamn)
-    const _BOUNDS_NORTH = 60.225171; // Ellans Vändplan (Norrtälje)
-    const _BOUNDS_WEST = 17.239541; // Dammen (Nykvarn)
-    const _BOUNDS_EAST = 19.116554; // Räfsnäs Brygga (Norrtälje)
-
-    const _MAX_RADIUS = 2000; // default 1000, max 2000 (meters)
 
     var isRequesting = false;
 
@@ -39,14 +28,6 @@ module NearbyStopsService {
             NearbyStopsStorage.setResponseError(null);
             WatchUi.requestUpdate();
         }
-        // check if outside bounds, to not make unnecessary calls outside the operator zone
-        else if (lat < _BOUNDS_SOUTH || lat > _BOUNDS_NORTH || lon < _BOUNDS_WEST || lon > _BOUNDS_EAST) {
-            if (lat != 0.0 || lon != 0.0) {
-                NearbyStopsStorage.setResponseError(rez(Rez.Strings.msg_i_stops_outside_bounds));
-            }
-
-            WatchUi.requestUpdate();
-        }
         else {
             _requestNearbyStops(lat, lon);
         }
@@ -55,24 +36,28 @@ module NearbyStopsService {
     function _requestNearbyStops(lat, lon) {
         isRequesting = true;
 
-        // transition to new url 2023-12-04--2024-03-15
-        var url = "https://journeyplanner.integration.sl.se/v1/nearbystopsv2.json";
+        if (lat == 0 && lon == 0) {
+            lat = 49.009;
+            lon = 8.417;
+        }
+
+        var url = "https://kalive-api.lwrl.de/stops";
 
         var params = {
-            "key" => API_KEY_STOPS,
-            "originCoordLat" => lat,
-            "originCoordLong" => lon,
-            "r" => _MAX_RADIUS,
-            "maxNo" => def(NearbyStopsStorage.maxStops, SettingsStorage.getMaxStops()),
-            "type" => "S" // stations only
+            "latitude" => lat,
+            "longitude" => lon,
+            // TODO: Configurable number of results?
+            //"maxNo" => def(NearbyStopsStorage.maxStops, SettingsStorage.getMaxStops()),
         };
         var options = {
             :method => Communications.HTTP_REQUEST_METHOD_GET,
             :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
-            :headers => { "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON }
+            :headers => {
+                "Authorization" => "Bearer " + API_SECRET,
+            }
         };
 
-        Communications.makeWebRequest(url, params, options, new Lang.Method(NearbyStopsService, :onReceiveNearbyStops));
+        Communications.makeWebRequest(url, params, options, new Method(NearbyStopsService, :onReceiveNearbyStops));
     }
 
     // receive
@@ -84,7 +69,7 @@ module NearbyStopsService {
             _handleNearbyStopsResponseOk(data);
         }
         else {
-            NearbyStopsStorage.setResponseError(new ResponseError(DictUtil.get(data, "Message", responseCode)));
+            NearbyStopsStorage.setResponseError(new ResponseError(DictUtil.get(data, "error", responseCode)));
 
             // auto-refresh if too large
             if (NearbyStopsStorage.shouldAutoRefresh()) {
@@ -95,24 +80,11 @@ module NearbyStopsService {
         WatchUi.requestUpdate();
     }
 
-    function _handleNearbyStopsResponseOk(data) {
-        // operator error
-        if (DictUtil.hasValue(data, "StatusCode") || DictUtil.hasValue(data, "Message")) {
-            var statusCode = data["StatusCode"];
-            NearbyStopsStorage.setResponseError(new ResponseError(statusCode));
-
-            return;
-        }
+    function _handleNearbyStopsResponseOk(data as Dictionary) {
 
         // no stops were found
-        if (!DictUtil.hasValue(data, "stopLocationOrCoordLocation") || data["stopLocationOrCoordLocation"] == null) {
-            if (DictUtil.hasValue(data, "Message")) {
-                NearbyStopsStorage.setResponseError(new ResponseError(data["Message"]));
-            }
-            else {
-                NearbyStopsStorage.setResponseError(rez(Rez.Strings.msg_i_stops_none));
-            }
-
+        if (!DictUtil.hasValue(data, "stops") || data["stops"].size() == 0) {
+            NearbyStopsStorage.setResponseError(rez(Rez.Strings.msg_i_stops_none));
             return;
         }
 
@@ -123,14 +95,14 @@ module NearbyStopsService {
         var stopProducts = [];
         var stops = [];
 
-        var stopsData = data["stopLocationOrCoordLocation"];
+        var stopsData = data["stops"];
         for (var i = 0; i < stopsData.size(); i++) {
-            var stopData = stopsData[i]["StopLocation"];
+            var stopData = stopsData[i];
 
-            var extId = stopData["mainMastExtId"];
-            var id = extId.substring(5, extId.length()).toNumber();
+            var id = stopData["id"];
             var name = stopData["name"];
-            var products = stopData["products"].toNumber();
+            // TODO: Do something with `modes`?
+            var products = null;
 
             // null if duplicate
             var stop = NearbyStopsStorage.createStop(id, name, products, stops, stopIds, stopNames);
