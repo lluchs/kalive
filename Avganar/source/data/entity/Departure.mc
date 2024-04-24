@@ -138,6 +138,7 @@ class Departure {
         var now = TimeUtil.now();
         var duration = now.subtract(_moment);
         var minutes = Math.round(duration.value() / 60.0).toNumber();
+        var info = Time.Gregorian.info(_moment, Time.FORMAT_SHORT);
 
         // NOTE: `Moment#subtract` returns a positive value. we don't need to
         // negate it here, however, because the departure is removed in
@@ -145,6 +146,8 @@ class Departure {
 
         return minutes == 0
             ? rez(Rez.Strings.itm_detail_departure_now)
+            : minutes > 9
+            ? (info.hour.format("%02d") + ":" + info.min.format("%02d"))
             : (minutes + SettingsStorage.getMinuteSymbol());
     }
 
