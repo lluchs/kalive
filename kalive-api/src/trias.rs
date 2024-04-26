@@ -59,6 +59,19 @@ pub fn format_stop_event_request(
     String::from_utf8(writer.into_inner().into_inner()).unwrap()
 }
 
+/// Fix-up of TRIAS data.
+fn process_departure(d: &mut Departure) {
+    // S-Bahn S1 => S1
+    if let Some(line) = d.line.strip_prefix(&d.mode_name) {
+        d.line = line[1..].to_string();
+    }
+
+    // ICE 76 InterCityExpress => ICE 76
+    if let Some(line) = d.line.strip_suffix(&d.mode_name) {
+        d.line = line[..line.len() - 1].to_string();
+    }
+}
+
 /// Parse a TRIAS StopEventResponse XML.
 pub fn parse_stop_event_response(xml: &str) -> Result<Vec<Departure>> {
     let mut reader = Reader::from_str(xml);
@@ -102,10 +115,7 @@ pub fn parse_stop_event_response(xml: &str) -> Result<Vec<Departure>> {
             Event::End(e) => match e.name().as_ref() {
                 b"StopEventResult" => {
                     let mut d = current_departure.take().unwrap();
-                    // S-Bahn S1 => S1
-                    if let Some(line) = d.line.strip_prefix(&d.mode_name) {
-                        d.line = line[1..].to_string();
-                    }
+                    process_departure(&mut d);
                     departures.push(d);
                 }
                 b"Text" => in_text = false,
@@ -595,13 +605,59 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
             </Service>
           </StopEvent>
         </StopEventResult>
-      </StopEventResponse>
+        <StopEventResult>
+          <ResultId>ID-839340DA-5FE6-4520-A0D3-A66784CA79D6</ResultId>
+          <StopEvent>
+            <ThisCall>
+              <CallAtStop>
+                <StopPointRef>de:08212:90:2:2</StopPointRef>
+                <StopPointName>
+                  <Text>Karlsruhe Hauptbahnhof</Text>
+                  <Language>de</Language>
+                </StopPointName>
+                <ServiceDeparture>
+                  <TimetabledTime>2024-04-27T02:03:00Z</TimetabledTime>
+                </ServiceDeparture>
+                <StopSeqNumber>13</StopSeqNumber>
+              </CallAtStop>
+            </ThisCall>
+            <Service>
+              <OperatingDayRef>2024-04-27</OperatingDayRef>
+              <JourneyRef>ddb:96N43::H:j24:60403</JourneyRef>
+              <LineRef>ddb:96N43::H</LineRef>
+              <DirectionRef>outward</DirectionRef>
+              <Mode>
+                <PtMode>rail</PtMode>
+                <RailSubmode>interregionalRail</RailSubmode>
+                <Name>
+                  <Text>InterCity</Text>
+                  <Language>de</Language>
+                </Name>
+              </Mode>
+              <PublishedLineName>
+                <Text>IC 60403 InterCity</Text>
+                <Language>de</Language>
+              </PublishedLineName>
+              <OperatorRef>ddb:</OperatorRef>
+              <OriginStopPointRef>NL:S:asd</OriginStopPointRef>
+              <OriginText>
+                <Text>Arnhem Centraal</Text>
+                <Language>de</Language>
+              </OriginText>
+              <DestinationText>
+                <Text>Zürich HB</Text>
+                <Language>de</Language>
+              </DestinationText>
+            </Service>
+          </StopEvent>
+        </StopEventResult>
+       </StopEventResponse>
     </DeliveryPayload>
   </ServiceDelivery>
 </Trias>
 "#;
         let departures = parse_stop_event_response(xml).unwrap();
-        assert!(departures.len() == 2);
+        assert!(departures.len() == 3);
 
         assert_eq!(
             &departures,
@@ -623,6 +679,15 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
                     mode_name: "Straßenbahn".to_string(),
                     timetable_time: "2024-04-11T21:32:30Z".to_string(),
                     estimated_time: Some("2024-04-11T21:32:30Z".to_string()),
+                },
+                Departure {
+                    line: "IC 60403".to_string(),
+                    destination: "Zürich HB".to_string(),
+                    bay: None,
+                    mode: "rail".to_string(),
+                    mode_name: "InterCity".to_string(),
+                    timetable_time: "2024-04-27T02:03:00Z".to_string(),
+                    estimated_time: None
                 }
             ]
         );
