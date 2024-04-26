@@ -101,10 +101,11 @@ pub fn parse_stop_event_response(xml: &str) -> Result<Vec<Departure>> {
             }
             Event::End(e) => match e.name().as_ref() {
                 b"StopEventResult" => {
-                    // S-Bahn S1 => S1
                     let mut d = current_departure.take().unwrap();
-                    let line = d.line.splitn(2, ' ');
-                    d.line = line.last().unwrap().to_string();
+                    // S-Bahn S1 => S1
+                    if let Some(line) = d.line.strip_prefix(&d.mode_name) {
+                        d.line = line[1..].to_string();
+                    }
                     departures.push(d);
                 }
                 b"Text" => in_text = false,
@@ -112,6 +113,7 @@ pub fn parse_stop_event_response(xml: &str) -> Result<Vec<Departure>> {
                 b"TimetabledTime" => set_to_text!(timetable_time),
                 b"EstimatedTime" => set_to_text!(estimated_time),
                 b"PtMode" => set_to_text!(mode),
+                b"Name" => set_to_text!(mode_name),
                 b"PublishedLineName" => set_to_text!(line),
                 b"DestinationText" => set_to_text!(destination),
                 _ => {}
@@ -605,20 +607,22 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
             &departures,
             &[
                 Departure {
-                    line: "S-Bahn S4".to_string(),
+                    line: "S4".to_string(),
                     destination: "Albtalbahnhof über Hbf".to_string(),
                     bay: "Gleis 1 (U)".to_string(),
                     mode: "rail".to_string(),
+                    mode_name: "S-Bahn".to_string(),
                     timetable_time: "2024-04-11T21:30:00Z".to_string(),
-                    estimated_time: "2024-04-11T21:34:00Z".to_string()
+                    estimated_time: Some("2024-04-11T21:34:00Z".to_string()),
                 },
                 Departure {
-                    line: "Straßenbahn 4".to_string(),
+                    line: "4".to_string(),
                     destination: "Oberreut (Umleitung)".to_string(),
                     bay: "Gleis 3".to_string(),
                     mode: "tram".to_string(),
+                    mode_name: "Straßenbahn".to_string(),
                     timetable_time: "2024-04-11T21:32:30Z".to_string(),
-                    estimated_time: "2024-04-11T21:32:30Z".to_string()
+                    estimated_time: Some("2024-04-11T21:32:30Z".to_string()),
                 }
             ]
         );

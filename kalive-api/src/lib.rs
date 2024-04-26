@@ -17,6 +17,7 @@ pub struct Departure {
     pub destination: String,
     pub bay: String,
     pub mode: String,
+    pub mode_name: String,
     pub timetable_time: String,
     pub estimated_time: Option<String>,
 }
