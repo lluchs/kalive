@@ -15,7 +15,7 @@ pub struct Stop {
 pub struct Departure {
     pub line: String,
     pub destination: String,
-    pub bay: String,
+    pub bay: Option<String>,
     pub mode: String,
     pub mode_name: String,
     pub timetable_time: String,

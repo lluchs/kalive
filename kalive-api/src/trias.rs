@@ -20,7 +20,7 @@ const STOP_EVENT_REQUEST_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
                     </LocationRef>
                 </Location>
                 <Params>
-                    <NumberOfResults>10</NumberOfResults>
+                    <NumberOfResults>16</NumberOfResults>
                     <StopEventType>departure</StopEventType>
                     <IncludePreviousCalls>false</IncludePreviousCalls>
                     <IncludeOnwardCalls>false</IncludeOnwardCalls>
@@ -292,7 +292,7 @@ mod tests {
                     </LocationRef>
                 </Location>
                 <Params>
-                    <NumberOfResults>10</NumberOfResults>
+                    <NumberOfResults>16</NumberOfResults>
                     <StopEventType>departure</StopEventType>
                     <IncludePreviousCalls>false</IncludePreviousCalls>
                     <IncludeOnwardCalls>false</IncludeOnwardCalls>
@@ -609,7 +609,7 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
                 Departure {
                     line: "S4".to_string(),
                     destination: "Albtalbahnhof über Hbf".to_string(),
-                    bay: "Gleis 1 (U)".to_string(),
+                    bay: Some("Gleis 1 (U)".to_string()),
                     mode: "rail".to_string(),
                     mode_name: "S-Bahn".to_string(),
                     timetable_time: "2024-04-11T21:30:00Z".to_string(),
@@ -618,7 +618,7 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
                 Departure {
                     line: "4".to_string(),
                     destination: "Oberreut (Umleitung)".to_string(),
-                    bay: "Gleis 3".to_string(),
+                    bay: Some("Gleis 3".to_string()),
                     mode: "tram".to_string(),
                     mode_name: "Straßenbahn".to_string(),
                     timetable_time: "2024-04-11T21:32:30Z".to_string(),
