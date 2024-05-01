@@ -31,37 +31,38 @@ class Departure {
     };
 
     static const TRAIN_LINE_COLOR = {
-        "S1" => 0x1cb78d,
-        "S11" => 0x1cb78d,
-        "S12" => 0x1cb78d,
-        "S2" => 0xa066aa,
-        "S3" => 0xffdd00,
-        "S31" => 0x00a99d,
-        "S32" => 0x00a99d,
-        "S33" => 0x8d5ca6,
-        "S4" => 0x9f184c,
-        "S5" => 0xf8b0ac,
-        "S51" => 0xf8b0ac,
-        "S52" => 0xf8b0ac,
-        "S6" => 0x282268,
-        "S7" => 0xfff200,
-        "S8" => 0x918c55,
-        "S9" => 0xa6ce42,
+        "S1"  => [0xffffff, 0x1cb78d],
+        "S11" => [0xffffff, 0x1cb78d],
+        "S12" => [0xffffff, 0x1cb78d],
+        "S2"  => [0xffffff, 0xa066aa],
+        "S3"  => [0x000000, 0xffdd00],
+        "S31" => [0xffffff, 0x00a99d],
+        "S32" => [0xffffff, 0x00a99d],
+        "S33" => [0xffffff, 0x8d5ca6],
+        "S4"  => [0xffffff, 0x9f184c],
+        "S5"  => [0x000000, 0xf8b0ac],
+        "S51" => [0x000000, 0xf8b0ac],
+        "S52" => [0x000000, 0xf8b0ac],
+        "S6"  => [0xffffff, 0x282268],
+        "S7"  => [0x000000, 0xfff200],
+        "S8"  => [0xffffff, 0x918c55],
+        "S9"  => [0xffffff, 0xa6ce42],
     };
 
     static const TRAM_LINE_COLOR = {
-        "1" => 0xf26649,
-        "2" => 0x0071bc,
-        "3" => 0x947139,
-        "4" => 0xffcb04,
-        "5" => 0x00c0f3,
-        "6" => 0xa6ce42,
-        "8" => 0xf7931d,
-        "17" => 0x660000,
-        "18" => 0x197248,
+        "1"  => [0xffffff, 0xf26649],
+        "2"  => [0xffffff, 0x0071bc],
+        "3"  => [0xffffff, 0x947139],
+        "4"  => [0x000000, 0xffcb04],
+        "5"  => [0xffffff, 0x00c0f3],
+        "6"  => [0xffffff, 0xa6ce42],
+        "8"  => [0x000000, 0xf7931d],
+        "17" => [0xffffff, 0x660000],
+        "18" => [0xffffff, 0x197248],
     };
 
     var mode;
+    hidden var _bay;
     hidden var _line;
     hidden var _destination;
     hidden var _moment;
@@ -73,10 +74,11 @@ class Departure {
 
     // init
 
-    function initialize(mode, line, destination, moment, deviationLevel, deviationMessages,
+    function initialize(mode, bay, line, destination, moment, deviationLevel, deviationMessages,
         cancelled, isRealTime) {
 
         me.mode = mode;
+        _bay = bay;
         _line = line;
         _destination = destination;
         _moment = moment;
@@ -124,6 +126,9 @@ class Departure {
     function toString() {
         return displayTime() + " " + _line + " " + _destination;
     }
+
+    function line() { return _line; }
+    function destination() { return _destination; }
 
     function displayTime() {
         if (_moment == null) {
@@ -194,18 +199,29 @@ class Departure {
         }
     }
 
-    function getModeColor() {
+    // return fg, bg line color
+    function getLineColor() {
+        var b = Graphene.COLOR_BLACK;
+        var w = Graphene.COLOR_WHITE;
+        var unknown = [w, b];
+        if (_line == null) {
+            return unknown;
+        }
         if (mode.equals(MODE_BUS)) {
-            return 0x91278f;
+            return [w, 0x91278f];
         }
         else if (mode.equals(MODE_TRAIN)) {
-            return TRAIN_LINE_COLOR[_line] || (_line.substring(0, 3).equals("RB") ? 0x9d9fa1 : 0x6d6e70);
+            if (TRAIN_LINE_COLOR.hasKey(_line)) {
+                return TRAIN_LINE_COLOR.get(_line);
+            } else {
+                return [w, (_line.substring(0, 3).equals("RB") ? 0x9d9fa1 : 0x6d6e70)];
+            }
         }
         else if (mode.equals(MODE_TRAM)) {
-            return TRAM_LINE_COLOR[_line] || AppColors.DEPARTURE_UNKNOWN;
+            return DictUtil.get(TRAM_LINE_COLOR, _line, unknown);
         }
         else {
-            return AppColors.DEPARTURE_UNKNOWN;
+            return unknown;
         }
     }
 

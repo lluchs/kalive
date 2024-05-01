@@ -214,19 +214,45 @@ class StopDetailView extends WatchUi.View {
         var yOffset = px(68);
         var rCircle = px(4);
 
+        var linePad = 3;
+        var wdtSpace = dc.getTextWidthInPixels(" ", font);
+        var dimTime = dc.getTextDimensions("00:00", font);
+        var hgtLine = dimTime[1] + 1; // + 1 necessary due to text rendering, somehow
+
         var h = dc.getHeight() - yOffset * 2;
         var lineHeightPx = h / (StopDetailViewModel.DEPARTURES_PER_PAGE - 1);
 
         for (var d = 0; d < StopDetailViewModel.DEPARTURES_PER_PAGE && d < pageDepartures.size(); d++) {
             var departure = pageDepartures[d];
+            var line = departure.line();
 
             var y = yOffset + d * lineHeightPx;
-            var xCircle = MathUtil.minX(yOffset, Graphite.getRadius(dc)) + xOffset + rCircle;
-            var xText = xCircle + rCircle + xOffset;
+            var xTime = xOffset;
+            var xLine = xTime + wdtSpace + dimTime[0];
+            var wdtLine = dc.getTextWidthInPixels(line, font) + 2*linePad;
+            if ((wdtLine + 2*linePad) < hgtLine) {
+                // make at least a square
+                wdtLine = hgtLine - 2*linePad;
+            }
+            var xText = xLine + wdtSpace + wdtLine;
 
-            // draw circle
-            Graphite.setColor(dc, departure.getModeColor());
-            dc.fillCircle(xCircle, y, rCircle);
+            // draw time
+            if (departure.isRealTime) {
+                Graphite.setColor(dc, AppColors.DEPARTURE_REALTIME);
+            }
+            dc.drawText(xTime + dimTime[0], y, font, departure.displayTime(), Graphics.TEXT_JUSTIFY_RIGHT|Graphics.TEXT_JUSTIFY_VCENTER);
+
+            // draw line background
+            var lineColor = departure.getLineColor();
+            dc.setColor(lineColor[1], lineColor[1]);
+            if (line.substring(0, 1).equals("S")) {
+                dc.fillRoundedRectangle(xLine, y - dimTime[1]/2, wdtLine+2*linePad, hgtLine, 2*linePad);
+            } else {
+                dc.fillRectangle(xLine, y - dimTime[1]/2, wdtLine+2*linePad, hgtLine);
+            }
+            // draw line name
+            dc.setColor(lineColor[0], lineColor[1]);
+            dc.drawText(xLine + wdtLine/2 + linePad, y, font, line, Graphics.TEXT_JUSTIFY_CENTER|Graphics.TEXT_JUSTIFY_VCENTER);
 
             // highlight selected departure
             var isSelected = _viewModel.isDepartureState && _viewModel.departureCursor == d;
@@ -234,13 +260,7 @@ class StopDetailView extends WatchUi.View {
             // draw text
             var textColor = isSelected ? AppColors.DEPARTURE_SELECTED : departure.getTextColor();
             Graphite.setColor(dc, textColor);
-            dc.drawText(xText, y, font, departure.toString(), Graphics.TEXT_JUSTIFY_LEFT|Graphics.TEXT_JUSTIFY_VCENTER);
-
-            // mark realtime
-            if (departure.isRealTime) {
-                Graphite.setColor(dc, AppColors.DEPARTURE_REALTIME);
-                dc.drawText(xText, y, font, departure.displayTime(), Graphics.TEXT_JUSTIFY_LEFT|Graphics.TEXT_JUSTIFY_VCENTER);
-            }
+            dc.drawText(xText, y, font, departure.destination(), Graphics.TEXT_JUSTIFY_LEFT|Graphics.TEXT_JUSTIFY_VCENTER);
 
             // strikethrough
             if (departure.cancelled) {

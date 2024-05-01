@@ -109,6 +109,7 @@ class DeparturesService {
             var departureData = departuresData[d];
 
             var mode = departureData["mode"];
+            var bay = departureData["bay"];
             var line = departureData["line"];
             var destination = departureData["destination"];
             var plannedDateTime = departureData["timetable_time"];
@@ -124,7 +125,7 @@ class DeparturesService {
             var deviationMessages = [];
             var cancelled = false;
 
-            var departure = new Departure(mode, line, destination, moment,
+            var departure = new Departure(mode, bay, line, destination, moment,
                 deviationLevel, deviationMessages, cancelled, isRealTime);
 
             departures.add(departure);
