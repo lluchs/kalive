@@ -27,19 +27,17 @@ module NearbyStopsService {
         if (!SettingsStorage.getUseLocation()) {
             NearbyStopsStorage.setResponseError(null);
             WatchUi.requestUpdate();
-        }
-        else {
+        } else if (lat == 0 && lon == 0) {
+            // lat = 49.009;
+            // lon = 8.417;
+            WatchUi.requestUpdate();
+        } else {
             _requestNearbyStops(lat, lon);
         }
     }
 
     function _requestNearbyStops(lat, lon) {
         isRequesting = true;
-
-        if (lat == 0 && lon == 0) {
-            lat = 49.009;
-            lon = 8.417;
-        }
 
         var url = "https://kalive-api.lwrl.de/stops";
 
