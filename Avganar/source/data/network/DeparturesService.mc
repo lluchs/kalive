@@ -131,6 +131,8 @@ class DeparturesService {
             departures.add(departure);
         }
 
+        departures.sort(null);
+
         if (departures.size() != 0) {
             _stop.setResponse([departures]);
         }

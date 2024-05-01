@@ -89,6 +89,10 @@ class Departure {
         me.isRealTime = isRealTime;
     }
 
+    function compareTo(other as Departure) {
+        return _moment.compare(other._moment);
+    }
+
     static function getModesKeysByBits(bits) {
         var modes = [];
 
