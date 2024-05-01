@@ -141,7 +141,7 @@ class StopDetailView extends WatchUi.View {
         var y = px(23) + px(19) / 2;
 
         Graphite.setColor(dc, AppColors.TEXT_SECONDARY);
-        dc.drawText(Graphite.getCenterX(dc), y, Graphics.FONT_XTINY, stop.name.toUpper(),
+        dc.drawText(Graphite.getCenterX(dc), y, Graphics.FONT_XTINY, stop.name,
             Graphics.TEXT_JUSTIFY_CENTER|Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
