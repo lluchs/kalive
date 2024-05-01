@@ -239,6 +239,8 @@ class StopDetailView extends WatchUi.View {
             // draw time
             if (departure.isRealTime) {
                 Graphite.setColor(dc, AppColors.DEPARTURE_REALTIME);
+            } else {
+                Graphite.setColor(dc, AppColors.TEXT_PRIMARY);
             }
             dc.drawText(xTime + dimTime[0], y, font, departure.displayTime(), Graphics.TEXT_JUSTIFY_RIGHT|Graphics.TEXT_JUSTIFY_VCENTER);
 
