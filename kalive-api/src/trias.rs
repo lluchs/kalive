@@ -70,6 +70,15 @@ fn process_departure(d: &mut Departure) {
     if let Some(line) = d.line.strip_suffix(&d.mode_name) {
         d.line = line[..line.len() - 1].to_string();
     }
+
+    // XML entities
+    d.destination = d
+        .destination
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&amp;", "&");
 }
 
 /// Parse a TRIAS StopEventResponse XML.
