@@ -22,13 +22,13 @@ module AppColors {
     const TEXT_TERTIARY = Graphene.COLOR_DK_GRAY;
     const TEXT_INVERTED = Graphene.COLOR_BLACK;
 
-    const PRIMARY = Graphene.COLOR_CERULIAN;
-    const PRIMARY_DK = Graphene.COLOR_DR_BLUE;
-    const PRIMARY_LT = Graphene.COLOR_LT_AZURE;
+    const PRIMARY = 0x782121;
+    const PRIMARY_DK = 0x501616;
+    const PRIMARY_LT = 0xc83737;
 
-    const ON_PRIMARY = Graphene.COLOR_BLACK;
-    const ON_PRIMARY_SECONDARY = Graphene.COLOR_DR_BLUE;
-    const ON_PRIMARY_TERTIARY = Graphene.COLOR_DK_BLUE;
+    const ON_PRIMARY = Graphene.COLOR_WHITE;
+    const ON_PRIMARY_SECONDARY = 0xd35f5f;
+    const ON_PRIMARY_TERTIARY = 0xd35f5f;
 
     const WARNING = Graphene.COLOR_VERMILION;
     const ERROR = Graphene.COLOR_RED;
