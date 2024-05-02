@@ -19,7 +19,6 @@ import Toybox.Lang;
 class DeparturesService {
 
     hidden var _stop;
-    hidden var _mode;
 
     static var isRequesting = false;
 
@@ -31,14 +30,7 @@ class DeparturesService {
 
     // request
 
-    function requestDepartures(mode) {
-        if (_stop != null) {
-            _mode = mode;
-            _requestDepartures(mode);
-        }
-    }
-
-    hidden function _requestDepartures(mode) {
+    function requestDepartures() {
         DeparturesService.isRequesting = true;
         WatchUi.requestUpdate();
 
@@ -69,7 +61,7 @@ class DeparturesService {
 
             // auto-refresh if too large
             if (_stop.shouldAutoRefresh()) {
-                requestDepartures(_mode);
+                requestDepartures();
             }
         }
         else if (!DictUtil.hasValue(data, "departures")) {
@@ -81,7 +73,7 @@ class DeparturesService {
             // – but look for messages which might correspond
             // with the previous server errors
             /*if (_stop.shouldAutoRefresh()) {
-                requestDepartures(_mode);
+                requestDepartures();
             }*/
         }
         else {
@@ -134,7 +126,7 @@ class DeparturesService {
         departures.sort(null);
 
         if (departures.size() != 0) {
-            _stop.setResponse([departures]);
+            _stop.setResponse(departures);
         }
         else {
             _stop.setResponse(rez(Rez.Strings.msg_i_departures_none));

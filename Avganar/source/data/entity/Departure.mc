@@ -203,6 +203,8 @@ class Departure {
         }
     }
 
+    function getBay() { return _bay; }
+
     // return fg, bg line color
     function getLineColor() {
         var b = Graphene.COLOR_BLACK;

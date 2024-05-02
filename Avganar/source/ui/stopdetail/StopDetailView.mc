@@ -51,27 +51,10 @@ class StopDetailView extends WatchUi.View {
 
     hidden function _draw(dc) {
         var stop = _viewModel.stop;
-        var isInModesPane = _viewModel.isAddModesPaneSelected();
 
         // text
         _drawHeader(dc, stop);
-        _drawFooter(dc, stop, _viewModel.isInitialRequest || isInModesPane);
-
-        if (_viewModel.isInitialRequest) {
-            _drawInitialModeList(dc, stop);
-            return;
-        }
-
-        if (isInModesPane) {
-            _drawModeList(dc, stop);
-
-            if (_viewModel.pageCursor == 0) {
-                _drawModeIndicator(dc);
-            }
-            // TODO: else another icon, such as a +?
-
-            return;
-        }
+        _drawFooter(dc, stop, false);
 
         // departures
         var response = _viewModel.getPageResponse();
@@ -111,27 +94,6 @@ class StopDetailView extends WatchUi.View {
                 }
             }
         }
-
-        // indicator: mode
-        _drawModeIndicator(dc);
-    }
-
-    hidden function _drawModeIndicator(dc) {
-        if (_viewModel.isDepartureState) {
-            return;
-        }
-
-        WidgetUtil.drawHorizontalPageIndicator(dc, _viewModel.getModePageCount(), _viewModel.modeCursor);
-    }
-
-    hidden function _drawInitialModeList(dc, stop) {
-        var items = stop.getAddableModesStrings();
-        WidgetUtil.drawSideList(dc, items, _viewModel.pageCursor, true);
-    }
-
-    hidden function _drawModeList(dc, stop) {
-        var items = ArrUtil.merge([ rez(Rez.Strings.itm_modes_continue) ], stop.getAddableModesStrings());
-        WidgetUtil.drawSideList(dc, items, _viewModel.pageCursor, true);
     }
 
     hidden function _drawHeader(dc, stop) {
@@ -189,23 +151,42 @@ class StopDetailView extends WatchUi.View {
 
         // mode letter
 
-        var modeLetter = stop.getModeLetter(_viewModel.modeCursor);
-
-        if (modeLetter.equals("")) {
+        var bay = _viewModel.currentBay;
+        if (bay == null) {
             return;
         }
+        bay = _shortenBay(bay);
 
-        var xMode = cx + px(48);
-        var yMode = y - px(7);
-        var fontMode = Graphics.FONT_TINY;
-        var fh = dc.getFontHeight(fontMode);
+        var xBay = cx + px(48);
+        var yBay = y - px(7);
+        var fontBay = Graphics.FONT_TINY;
+        var fh = dc.getFontHeight(fontBay);
         var r = Math.ceil(fh / 2f);
 
         Graphite.setColor(dc, AppColors.BACKGROUND_INVERTED);
-        dc.fillCircle(xMode, yMode + r, r + 2);
+        dc.fillCircle(xBay, yBay + r, r + 2);
 
         dc.setColor(AppColors.PRIMARY_DK, AppColors.BACKGROUND_INVERTED);
-        dc.drawText(xMode, yMode, fontMode, modeLetter, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(xBay, yBay, fontBay, bay, Graphics.TEXT_JUSTIFY_CENTER);
+    }
+
+    // Gleis 1 (U) => 1
+    hidden function _shortenBay(bay) {
+        var prefixes = ["Gleis ", "Bstg. "];
+        var suffixes = [" (U)"];
+        for (var i = 0; i < prefixes.size(); i++) {
+            if (bay.substring(0, prefixes[i].length()).equals(prefixes[i])) {
+                bay = bay.substring(prefixes[i].length(), null);
+                break; // assume that there's only one prefix
+            }
+        }
+        for (var i = 0; i < suffixes.size(); i++) {
+            if (bay.substring(-suffixes[i].length(), null).equals(suffixes[i])) {
+                bay = bay.substring(0, -suffixes[i].length());
+                break; // assume that there's only one suffix
+            }
+        }
+        return bay;
     }
 
     hidden function _drawDepartures(dc, pageDepartures) {

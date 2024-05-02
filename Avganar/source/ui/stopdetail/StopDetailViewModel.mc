@@ -26,10 +26,9 @@ class StopDetailViewModel {
     var stop;
     var pageCount = 1;
     var pageCursor = 0;
-    var modeCursor = 0;
+    var currentBay = null;
     var departureCursor = 0;
     var isDepartureState = false;
-    var isInitialRequest = true;
 
     hidden var _lastPageDepartureCount = 0;
     hidden var _delayTimer = new Timer.Timer();
@@ -40,18 +39,15 @@ class StopDetailViewModel {
     function initialize(stop) {
         me.stop = stop;
 
-        // when initial mode menu is open,
-        // (ie dont request automatically; wait for user input),
-        // or we are waiting for that first response
-        isInitialRequest = stop.getResponse() == null && stop.getAddableModesCount() > 1;
+        if (stop.getResponse() == null) {
+            _requestDepartures();
+        }
     }
 
     // request
 
     function enableRequests() {
-        if (!isInitialRequest) {
-            _requestDeparturesDelayed();
-        }
+        _requestDeparturesDelayed();
     }
 
     function disableRequests() {
@@ -74,7 +70,7 @@ class StopDetailViewModel {
     }
 
     function onDelayedDeparturesRequest() {
-        _requestDepartures(getCurrentModeKey());
+        _requestDepartures();
         _startRepeatTimer();
     }
 
@@ -91,11 +87,11 @@ class StopDetailViewModel {
             return;
         }
 
-        _requestDepartures(getCurrentModeKey());
+        _requestDepartures();
     }
 
-    hidden function _requestDepartures(mode) {
-        new DeparturesService(stop).requestDepartures(mode);
+    hidden function _requestDepartures() {
+        new DeparturesService(stop).requestDepartures();
     }
 
     // read
@@ -103,27 +99,19 @@ class StopDetailViewModel {
     //! Get only the departures that should be
     //! displayed on the current page
     function getPageResponse() {
-        if (isInitialRequest || isAddModesPaneSelected()) {
-            // should not happen, but check just in case
-            return null;
-        }
+        var departures = stop.getDepartures(currentBay);
 
-        var responseAndMode = stop.getModeResponse(modeCursor);
-        var modeResponse = responseAndMode[0];
-        modeCursor = responseAndMode[1]; // the cursor might have been coerced
-        responseAndMode = null;
-
-        if (!(modeResponse instanceof Lang.Array)) {
+        if (!(departures instanceof Lang.Array)) {
             pageCount = 1;
             isDepartureState = false;
-            return modeResponse;
+            return departures;
         }
 
-        _lastPageDepartureCount = modeResponse.size() % DEPARTURES_PER_PAGE;
+        _lastPageDepartureCount = departures.size() % DEPARTURES_PER_PAGE;
         if (_lastPageDepartureCount == 0) {
             _lastPageDepartureCount = DEPARTURES_PER_PAGE;
         }
-        pageCount = Math.ceil(modeResponse.size().toFloat() / DEPARTURES_PER_PAGE).toNumber();
+        pageCount = Math.ceil(departures.size().toFloat() / DEPARTURES_PER_PAGE).toNumber();
 
         // coerce cursor
         pageCursor = MathUtil.min(pageCursor, pageCount - 1);
@@ -133,45 +121,13 @@ class StopDetailViewModel {
         var endIndex = startIndex + DEPARTURES_PER_PAGE;
 
         // slice to page range
-        return modeResponse.slice(startIndex, endIndex);
+        return departures.slice(startIndex, endIndex);
     }
 
     function canNavigateToDeviation() {
         return !isDepartureState
-            && !isInitialRequest
-            && !isAddModesPaneSelected()
             && pageCursor == 0
             && stop.getDeviationMessages().size() != 0;
-    }
-
-    function getCurrentModeKey() {
-        // for auto-refreshing
-        // TODO: only temporarily (?)
-
-        // NOTE: migration to 1.8.0
-        // iif products are unknown, return null => request all modes
-        if (stop.getProducts() == null) {
-            return null;
-        }
-
-        var mode = isAddModesPaneSelected() ? modeCursor - 1 : modeCursor;
-        return stop.getAddedModeKey(mode);
-    }
-
-    function isAddModesPaneSelected() {
-        return includeAddModesPane() ? modeCursor == getModePageCount() - 1 : false;
-    }
-
-    function getModePageCount() {
-        return stop.getAddedModesCount() + (includeAddModesPane() ? 1 : 0);
-    }
-
-    function includeAddModesPane() {
-        // if loading (response = null), there is 1 mode that isnt yet added
-        // but also shouldnt count as addable. TODO: this is only a temp fix
-        // to avoid showing hori page indicator when initially requesting
-        // for a stop with only one mode.
-        return stop.getAddableModesCount() > (stop.getResponse() == null ? 1 : 0);
     }
 
     // write
@@ -185,12 +141,11 @@ class StopDetailViewModel {
     //! Scrolling down
     function incCursor() {
         if (stop.getResponse() instanceof ResponseError
-            && stop.getResponse().isUserRefreshable()
-            && !isAddModesPaneSelected()) {
+            && stop.getResponse().isUserRefreshable()) {
 
             // refresh
             stop.resetResponse();
-            _requestDepartures(getCurrentModeKey());
+            _requestDepartures();
             WatchUi.requestUpdate();
         }
         else if (isDepartureState) {
@@ -228,24 +183,7 @@ class StopDetailViewModel {
     }
 
     hidden function _incPageCursor() {
-        if (isInitialRequest) {
-            if (pageCursor < stop.getAddableModesCount() - 1) {
-                pageCursor++;
-                return true;
-            }
-
-            return false;
-        }
-        else if (isAddModesPaneSelected()) {
-            // +1 because of "Continue" item
-            if (pageCursor < stop.getAddableModesCount()) {
-                pageCursor++;
-                return true;
-            }
-
-            return false;
-        }
-        else if (pageCursor < pageCount - 1) {
+        if (pageCursor < pageCount - 1) {
             pageCursor++;
             return true;
         }
@@ -267,9 +205,8 @@ class StopDetailViewModel {
 
     function onSelect() {
         if (isDepartureState) {
-            var responseAndMode = stop.getModeResponse(modeCursor);
-            var modeResponse = responseAndMode[0];
-            var selectedDeparture = modeResponse[pageCursor * 4 + departureCursor];
+            var departures = stop.getDepartures(currentBay);
+            var selectedDeparture = departures[pageCursor * DEPARTURES_PER_PAGE + departureCursor];
             var messages = selectedDeparture.getDeviationMessages();
 
             if (messages.size() == 0) {
@@ -278,41 +215,27 @@ class StopDetailViewModel {
 
             DialogView.push(null, messages, Rez.Drawables.ic_warning, WatchUi.SLIDE_LEFT);
         }
-        else if (isInitialRequest) {
-            var mode = stop.getAddableModeKey(pageCursor);
-            _requestDepartures(mode);
-
-            isInitialRequest = false;
-            pageCursor = 0;
-        }
-        else if (isAddModesPaneSelected()) {
-            if (pageCursor == 0) {
-                onNextMode();
-            }
-            else {
-                // -1 because of "Confirm" item
-                var mode = stop.getAddableModeKey(pageCursor - 1);
-                _requestDepartures(mode);
-                _incModeCursor();
-            }
-        }
         else {
-            onNextMode();
+            onNextBay();
         }
     }
 
-    function onNextMode() {
-        if (getModePageCount() > 1) {
-            // rotate mode
-            _incModeCursor();
+    function onNextBay() {
+        var bays = stop.getBays();
+        if (bays.size() > 1 || currentBay != null) {
+            if (currentBay == null) {
+                currentBay = bays[0];
+            } else {
+                var idx = bays.indexOf(currentBay);
+                if (idx == -1 || idx == bays.size() - 1) {
+                    currentBay = null;
+                } else {
+                    currentBay = bays[idx + 1];
+                }
+            }
+            pageCursor = 0;
             WatchUi.requestUpdate();
         }
-    }
-
-    hidden function _incModeCursor() {
-        modeCursor = MathUtil.mod(modeCursor + 1, getModePageCount());
-        pageCursor = 0;
-        WatchUi.requestUpdate();
     }
 
 }

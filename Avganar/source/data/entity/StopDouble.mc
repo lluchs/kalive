@@ -80,10 +80,6 @@ class StopDouble {
         return _stop.getFailedRequestCount();
     }
 
-    function getTimeWindow() {
-        return _stop.getTimeWindow();
-    }
-
     function getDeviationMessages() {
         return _stop.getDeviationMessages();
     }

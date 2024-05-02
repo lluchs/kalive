@@ -42,7 +42,7 @@ class StopDetailDelegate extends WatchUi.BehaviorDelegate {
         // enable swiping left between modes.
         // swiping right is disabled to avoid interference with ´onBack´.
         if (swipeEvent.getDirection() == WatchUi.SWIPE_LEFT && !_viewModel.isDepartureState) {
-            _viewModel.onNextMode();
+            _viewModel.onNextBay();
             return true;
         }
 

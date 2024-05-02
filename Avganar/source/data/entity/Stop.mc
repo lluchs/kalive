@@ -11,14 +11,13 @@
 // You should have received a copy of the GNU General Public License along with Avgånär.
 // If not, see <https://www.gnu.org/licenses/>.
 
-using Toybox.Lang;
+import Toybox.Lang;
 
 //! Must have the same interface as `StopDouble` since we often don't
 //! know whether our stops are of `Stop` or `StopDouble`.
 class Stop {
 
     hidden static var _SERVER_AUTO_REQUEST_LIMIT = 4;
-    hidden static var _MEMORY_MIN_TIME_WINDOW = 5;
 
     // NOTE: instead of adding public fields, add getters.
     // and when adding functions, remember to add
@@ -28,11 +27,10 @@ class Stop {
 
     hidden var _id;
     hidden var _products = null;
-    hidden var _addedProducts = 0;
     hidden var _response;
+    hidden var _bays;
     hidden var _failedRequestCount = 0;
     hidden var _deviationMessages = [];
-    hidden var _departuresTimeWindow;
     hidden var _timeStamp;
 
     // init
@@ -58,25 +56,7 @@ class Stop {
         _response = response;
         _timeStamp = TimeUtil.now();
 
-        // for each too large response, halve the time window
-        if (_response instanceof ResponseError && _response.isTooLarge()) {
-            if (_departuresTimeWindow == null) {
-                _departuresTimeWindow = SettingsStorage.getDefaultTimeWindow() / 2;
-            }
-            else if (_departuresTimeWindow > _MEMORY_MIN_TIME_WINDOW
-                && _departuresTimeWindow < 2 * _MEMORY_MIN_TIME_WINDOW) {
-                // if halving would result in less than the minimum,
-                // use the minimum
-                _departuresTimeWindow = _MEMORY_MIN_TIME_WINDOW;
-            }
-            else {
-                _departuresTimeWindow /= 2;
-            }
-
-            _failedRequestCount++;
-            return;
-        }
-        else if (_response instanceof ResponseError && _response.isServerError()) {
+        if (_response instanceof ResponseError && _response.isServerError()) {
             _failedRequestCount++;
             return;
         }
@@ -85,12 +65,14 @@ class Stop {
         vibrate();
         _failedRequestCount = 0;
 
-        if (_response instanceof Lang.Array && _response.size() > 0 && _response[0].size() > 0) {
-            // TODO: a better way that works also if no departures
-            _addedProducts = Departure.MODE_TO_BIT[_response[0][0].mode];
-        }
-        else {
-            _addedProducts = 0;
+        _bays = {};
+        for (var i = 0; i < _response.size(); i++) {
+            var bay = _response[i].getBay();
+            if (_bays.hasKey(bay)) {
+                _bays[bay].add(_response[i]);
+            } else {
+                _bays.put(bay, [_response[i]]);
+            }
         }
     }
 
@@ -127,16 +109,22 @@ class Stop {
         return _failedRequestCount;
     }
 
-    function getTimeWindow() {
-        // we don't want to initialize `_departuresTimeWindow` with `SettingsStorage.getDefaultTimeWindow()`,
-        // because then it wont sync when the setting is edited.
-        return _departuresTimeWindow != null
-            ? _departuresTimeWindow
-            : SettingsStorage.getDefaultTimeWindow();
-    }
-
     function getDeviationMessages() {
         return _deviationMessages;
+    }
+
+    function getBays() as Array<String> {
+        var bays = _bays.keys();
+        bays.sort(null);
+        return bays;
+    }
+
+    function getDepartures(bay as String or Null) as Array<Departure> {
+        if (bay) {
+            return _bays.get(bay);
+        } else {
+            return _response;
+        }
     }
 
     function shouldAutoRefresh() {
@@ -149,98 +137,14 @@ class Stop {
             return false;
         }
 
-        if (getTimeWindow() < _MEMORY_MIN_TIME_WINDOW) {
-            setResponse(new ResponseError(ResponseError.CODE_AUTO_REQUEST_LIMIT_MEMORY));
-            return false;
-        }
-
         return _response.isAutoRefreshable();
     }
 
     function getDataAgeMillis() {
-        return _response instanceof Lang.Array || _response instanceof Lang.String
+        return _response instanceof Array || _response instanceof String
             ? TimeUtil.now().subtract(_timeStamp).value() * 1000
             : null;
     }
-
-    function getAddableModeKey(index) {
-        // TODO: more efficient
-        return _getAddableModesKeys()[index];
-    }
-
-    hidden function _getAddableModesKeys() {
-        if (_products == null) {
-            // NOTE: migration to 1.8.0
-            // if products are unknown, skip the mode menu entirely
-            return [];
-        }
-
-        // TODO: more efficient?
-        var addableProducts = _products - _addedProducts;
-        return Departure.getModesKeysByBits(addableProducts);
-    }
-
-    function getAddableModesStrings() {
-        if (_products == null) {
-            // NOTE: migration to 1.8.0
-            // if products are unknown, skip the mode menu entirely
-            return [];
-        }
-
-        // TODO: more efficient?
-        var addableProducts = _products - _addedProducts;
-        return Departure.getModesStringsByBits(addableProducts);
-    }
-
-    function getAddableModesCount() {
-        // TODO: more efficient
-        return _getAddableModesKeys().size();
-    }
-
-    function getAddedModeKey(index) {
-        if (!(_response instanceof Lang.Array) || _response.size() == 0) {
-            return _products == null
-                ? Departure.MODE_BUS // NOTE: migration to 1.8.0
-                : Departure.getModesKeysByBits(_products)[0]; // TODO: more efficient
-        }
-
-        return _response[index][0].mode;
-    }
-
-    function getAddedModesCount() {
-        if (!(_response instanceof Lang.Array)) {
-            return 1;
-        }
-
-        return _response.size();
-    }
-
-    function getModeResponse(mode) {
-        if (_response instanceof Lang.Array) {
-            if (_response.size() > 0) {
-                do {
-                    mode = MathUtil.coerceIn(mode, 0, _response.size() - 1);
-                    _removeDepartedDepartures(mode);
-                }
-                while (_response.removeAll(null) && _response.size() > 0);
-            }
-
-            return [ _response.size() > 0 ? _response[mode] : rez(Rez.Strings.msg_i_departures_none),
-                mode ];
-        }
-
-        return [ _response, 0 ];
-    }
-
-    function getModeLetter(mode) {
-        if (!(_response instanceof Lang.Array) || mode >= _response.size() || _response[mode].size() == 0) {
-            return "";
-        }
-
-        return _response[mode][0].getModeLetter();
-    }
-
-    //
 
     hidden function _removeDepartedDepartures(mode) {
         if (_response[mode] == null || _response[mode].size() == 0 || !_response[mode][0].hasDeparted()) {
