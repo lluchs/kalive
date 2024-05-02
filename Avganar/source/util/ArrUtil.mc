@@ -11,6 +11,8 @@
 // You should have received a copy of the GNU General Public License along with Avgånär.
 // If not, see <https://www.gnu.org/licenses/>.
 
+import Toybox.Lang;
+
 (:glance)
 module ArrUtil {
 
@@ -104,6 +106,16 @@ module ArrUtil {
         var temp = arr[i];
         arr[i] = arr[j];
         arr[j] = temp;
+    }
+
+    // A comparator for objects implementing Comparable
+    class SortComparator {
+        function compare(a as Object, b as Object) as Number {
+            if (a has :compareTo) {
+                return (a as Comparable).compareTo(b);
+            }
+            return 0;
+        }
     }
 
 }

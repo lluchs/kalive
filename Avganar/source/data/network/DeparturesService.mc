@@ -123,7 +123,7 @@ class DeparturesService {
             departures.add(departure);
         }
 
-        departures.sort(null);
+        departures.sort(new ArrUtil.SortComparator());
 
         if (departures.size() != 0) {
             _stop.setResponse(departures);
