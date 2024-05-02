@@ -76,6 +76,9 @@ class Stop {
         var r = _response as Array<Departure>;
         for (var i = 0; i < r.size(); i++) {
             var bay = r[i].getBay();
+            if (bay == null) {
+                continue;
+            }
             if (_bays.hasKey(bay)) {
                 _bays[bay].add(r[i]);
             } else {
