@@ -166,7 +166,7 @@ class StopDetailView extends WatchUi.View {
         Graphite.setColor(dc, AppColors.BACKGROUND_INVERTED);
         dc.fillCircle(xBay, yBay + r, r + 2);
 
-        dc.setColor(AppColors.PRIMARY_DK, AppColors.BACKGROUND_INVERTED);
+        dc.setColor(AppColors.PRIMARY_DK, Graphics.COLOR_TRANSPARENT);
         dc.drawText(xBay, yBay, fontBay, bay, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
@@ -197,7 +197,7 @@ class StopDetailView extends WatchUi.View {
         var linePad = 3;
         var wdtSpace = dc.getTextWidthInPixels(" ", font);
         var dimTime = dc.getTextDimensions("00:00", font);
-        var hgtLine = dimTime[1] + 1; // + 1 necessary due to text rendering, somehow
+        var hgtLine = dimTime[1];
 
         var h = dc.getHeight() - yOffset * 2;
         var lineHeightPx = h / (StopDetailViewModel.DEPARTURES_PER_PAGE - 1);
@@ -233,7 +233,7 @@ class StopDetailView extends WatchUi.View {
                 dc.fillRectangle(xLine, y - dimTime[1]/2, wdtLine+2*linePad, hgtLine);
             }
             // draw line name
-            dc.setColor(lineColor[0], lineColor[1]);
+            dc.setColor(lineColor[0], Graphics.COLOR_TRANSPARENT);
             dc.drawText(xLine + wdtLine/2 + linePad, y, font, line, Graphics.TEXT_JUSTIFY_CENTER|Graphics.TEXT_JUSTIFY_VCENTER);
 
             // highlight selected departure
