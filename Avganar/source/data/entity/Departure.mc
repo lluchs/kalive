@@ -46,7 +46,9 @@ class Departure {
         "S52" => [0x000000, 0xf8b0ac],
         "S6"  => [0xffffff, 0x282268],
         "S7"  => [0x000000, 0xfff200],
+        "S71" => [0x000000, 0xfff200],
         "S8"  => [0xffffff, 0x918c55],
+        "S81" => [0xffffff, 0x918c55],
         "S9"  => [0xffffff, 0xa6ce42],
     };
 
