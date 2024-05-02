@@ -11,7 +11,7 @@
 // You should have received a copy of the GNU General Public License along with Avgånär.
 // If not, see <https://www.gnu.org/licenses/>.
 
-using Toybox.Lang;
+import Toybox.Lang;
 using Toybox.Math;
 using Toybox.Timer;
 using Toybox.WatchUi;
@@ -23,7 +23,7 @@ class StopDetailViewModel {
 
     static const DEPARTURES_PER_PAGE = 4;
 
-    var stop;
+    var stop as Stop;
     var pageCount = 1;
     var pageCursor = 0;
     var currentBay = null;
@@ -36,7 +36,7 @@ class StopDetailViewModel {
 
     // init
 
-    function initialize(stop) {
+    function initialize(stop as Stop) {
         me.stop = stop;
 
         if (stop.getResponse() == null) {
@@ -75,7 +75,7 @@ class StopDetailViewModel {
     }
 
     hidden function _startRepeatTimer() {
-        var screenTimer = new TimerRepr(new Lang.Method(WatchUi, :requestUpdate), 1);
+        var screenTimer = new TimerRepr(new Method(WatchUi, :requestUpdate), 1);
         var requestTimer = new TimerRepr(method(:onTimer), _REQUEST_TIME_INTERVAL / _REFRESH_TIME_INTERVAL);
 
         _repeatTimer.start(_REFRESH_TIME_INTERVAL, [ screenTimer, requestTimer ]);
@@ -101,7 +101,7 @@ class StopDetailViewModel {
     function getPageResponse() {
         var departures = stop.getDepartures(currentBay);
 
-        if (!(departures instanceof Lang.Array)) {
+        if (!(departures instanceof Array)) {
             pageCount = 1;
             isDepartureState = false;
             return departures;

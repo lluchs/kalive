@@ -39,7 +39,7 @@ class App extends Application.AppBase {
 
     //
 
-    function getMainView() {
+    function getMainView() as [StopListView, StopListDelegate] {
         FavoriteStopsStorage.load();
         NearbyStopsStorage.load();
 

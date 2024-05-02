@@ -11,6 +11,7 @@
 // You should have received a copy of the GNU General Public License along with Avgånär.
 // If not, see <https://www.gnu.org/licenses/>.
 
+import Toybox.Lang;
 using Toybox.Math;
 
 module MathUtil {
@@ -22,7 +23,7 @@ module MathUtil {
     //! Get carteesian coordinates from polar coordinates
     //! @param angle The argument of the position, in radians
     //! @param x0, y0 The x- and y-coordinates of the center
-    function polarPos(amp, angle, x0, y0) {
+    function polarPos(amp, angle, x0, y0) as [Number, Number] {
         var x = amp * Math.cos(angle) + x0;
         // multiply by -1 to handle screen y increase downwards
         var y = -1 * amp * Math.sin(angle) + y0;

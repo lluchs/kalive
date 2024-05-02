@@ -11,6 +11,7 @@
 // You should have received a copy of the GNU General Public License along with Avgånär.
 // If not, see <https://www.gnu.org/licenses/>.
 
+import Toybox.Lang;
 using Toybox.Application.Storage;
 using Toybox.Lang;
 using Toybox.Math;
@@ -107,7 +108,7 @@ module NearbyStopsStorage {
 
     //! Create a new stop, a `StopDouble`, refer to another, or return `null`
     //! depending on if it already exists with `id` or `id` and `name`
-    function createStop(id, name, products, addedStops, addedStopIds, addedStopNames) {
+    function createStop(id, name, products, addedStops as Array, addedStopIds as Array, addedStopNames as Array) {
         // we need to consider all already added stops, since
         // "id1 name1" should return existing "id1 name1" over "id1 name2"
         var addedStopsWithSameIdIndices = ArrUtil.indicesOf(addedStopIds, id);
@@ -187,7 +188,7 @@ module NearbyStopsStorage {
         return new Stop(id, name, products);
     }
 
-    function _buildStops(ids, names, products) {
+    function _buildStops(ids as Array, names as Array, products as Array) {
         var addedStops = [];
         var addedIds = [];
         var addedNames = [];

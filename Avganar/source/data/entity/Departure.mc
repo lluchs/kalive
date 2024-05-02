@@ -11,6 +11,7 @@
 // You should have received a copy of the GNU General Public License along with Avgånär.
 // If not, see <https://www.gnu.org/licenses/>.
 
+import Toybox.Lang;
 using Toybox.Math;
 using Toybox.Time;
 
@@ -206,7 +207,7 @@ class Departure {
     function getBay() { return _bay; }
 
     // return fg, bg line color
-    function getLineColor() {
+    function getLineColor() as [Number, Number] {
         var b = Graphene.COLOR_BLACK;
         var w = Graphene.COLOR_WHITE;
         var unknown = [w, b];
@@ -218,7 +219,7 @@ class Departure {
         }
         else if (mode.equals(MODE_TRAIN)) {
             if (TRAIN_LINE_COLOR.hasKey(_line)) {
-                return TRAIN_LINE_COLOR.get(_line);
+                return TRAIN_LINE_COLOR.get(_line) as [Number, Number];
             } else {
                 return [w, (_line.substring(0, 3).equals("RB") ? 0x9d9fa1 : 0x6d6e70)];
             }

@@ -11,6 +11,7 @@
 // You should have received a copy of the GNU General Public License along with Avgånär.
 // If not, see <https://www.gnu.org/licenses/>.
 
+import Toybox.Lang;
 using Toybox.WatchUi;
 
 //! An abstraction for creating select-one options menus.
@@ -28,7 +29,7 @@ class RadioMenuDelegate extends WatchUi.Menu2InputDelegate {
         _addItems(title, labels, values, focus);
     }
 
-    hidden function _addItems(title, labels, values, focus) {
+    hidden function _addItems(title, labels as Array or Null, values as Array, focus) {
         _menu = new WatchUi.Menu2({ :title => title });
 
         var itemCount = labels == null

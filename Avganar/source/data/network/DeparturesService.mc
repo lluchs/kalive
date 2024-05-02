@@ -84,7 +84,7 @@ class DeparturesService {
     }
 
     hidden function _handleDeparturesResponseOk(data as Dictionary) {
-        var departuresData = data["departures"];
+        var departuresData = data["departures"] as Array<Dictionary>;
 
         if (departuresData.size() == 0) {
             _stop.setResponse(rez(Rez.Strings.msg_i_departures_none));

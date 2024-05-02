@@ -12,7 +12,7 @@
 // If not, see <https://www.gnu.org/licenses/>.
 
 using Toybox.Application.Storage;
-using Toybox.Lang;
+import Toybox.Lang;
 using Toybox.Position;
 using Toybox.Timer;
 using Toybox.WatchUi;
@@ -23,7 +23,7 @@ class StopListViewModel {
 
     var stopCursor = 0;
 
-    hidden var _lastPos;
+    hidden var _lastPos as [Number, Number];
 
     // init
 
@@ -121,10 +121,10 @@ class StopListViewModel {
         return NearbyStopsStorage.hasStops() || FavoriteStopsStorage.favorites.size() > 0;
     }
 
-    hidden function _getStops() {
+    hidden function _getStops() as Array<Stop> {
         var response = NearbyStopsStorage.response;
         var favs = FavoriteStopsStorage.favorites;
-        var stops = response instanceof Lang.Array ? ArrUtil.merge(favs, response) : favs;
+        var stops = response instanceof Array ? ArrUtil.merge(favs, response) : favs;
 
         // coerce cursor
         stopCursor = MathUtil.min(stopCursor, getItemCount() - 1);
@@ -147,7 +147,7 @@ class StopListViewModel {
     function getItemCount() {
         var response = NearbyStopsStorage.response;
 
-        return getFavoriteCount() + (response instanceof Lang.Array ? response.size() : 1);
+        return getFavoriteCount() + (response instanceof Array ? response.size() : 1);
     }
 
     function getFavoriteCount() {
@@ -165,7 +165,7 @@ class StopListViewModel {
     }
 
     function isShowingMessage() {
-        return !(NearbyStopsStorage.response instanceof Lang.Array) && stopCursor == getItemCount() - 1;
+        return !(NearbyStopsStorage.response instanceof Array) && stopCursor == getItemCount() - 1;
     }
 
     // storage - write

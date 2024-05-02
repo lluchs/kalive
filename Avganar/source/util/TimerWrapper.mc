@@ -11,14 +11,15 @@
 // You should have received a copy of the GNU General Public License along with Avgånär.
 // If not, see <https://www.gnu.org/licenses/>.
 
+import Toybox.Lang;
 using Toybox.Timer;
 
 //! Synthesise multiple timers by only using one `Timer`.
 class TimerWrapper {
 
-    hidden var _timer;
-    hidden var _baseTime;
-    hidden var _reprs;
+    hidden var _timer as Timer.Timer;
+    hidden var _baseTime as Number or Null;
+    hidden var _reprs as Array<TimerRepr> or Null;
 
     function initialize() {
         _timer = new Timer.Timer();
@@ -26,7 +27,7 @@ class TimerWrapper {
 
     //! @baseTime the smallest "timer" duration, of wich all other "timers"
     //! should be multiples
-    function start(baseTime, reprs) {
+    function start(baseTime as Number, reprs as Array<TimerRepr>) {
         _baseTime = baseTime;
         _reprs = reprs;
 
@@ -37,7 +38,7 @@ class TimerWrapper {
         _timer.stop();
     }
 
-    function onTimer() {
+    function onTimer() as Void {
         for (var i = 0; i < _reprs.size(); i++) {
             _reprs[i].onBaseTime();
         }

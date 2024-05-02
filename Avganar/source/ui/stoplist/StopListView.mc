@@ -81,7 +81,6 @@ class StopListView extends WatchUi.View {
     }
 
     hidden function _drawLoadingStatus(dc) {
-        var w = dc.getWidth();
         var progress;
 
         if (NearbyStopsService.isRequesting) {

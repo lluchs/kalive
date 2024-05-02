@@ -11,6 +11,7 @@
 // You should have received a copy of the GNU General Public License along with Avgånär.
 // If not, see <https://www.gnu.org/licenses/>.
 
+import Toybox.Lang;
 using Toybox.Graphics;
 using Toybox.Math;
 
@@ -32,7 +33,7 @@ module WidgetUtil {
 
     // text
 
-    function drawDialog(dc, text) {
+    function drawDialog(dc as Graphics.Dc, text) {
         var fonts = [ Graphics.FONT_SMALL, Graphics.FONT_TINY ];
         var fh = Graphics.getFontHeight(fonts[0]);
         var w = dc.getWidth() - px(12);
@@ -69,11 +70,11 @@ module WidgetUtil {
 
     // header/footer
 
-    function drawExclamationBanner(dc) {
+    function drawExclamationBanner(dc as Graphics.Dc) {
         drawHeader(dc, px(30), AppColors.ERROR, AppColors.BACKGROUND, "!", AppColors.TEXT_PRIMARY);
     }
 
-    function drawActionFooter(dc, message) {
+    function drawActionFooter(dc as Graphics.Dc, message) {
         drawFooter(dc, px(42), AppColors.BACKGROUND_INVERTED, AppColors.BACKGROUND, message, AppColors.TEXT_INVERTED);
 
         Graphite.setColor(dc, AppColors.TEXT_INVERTED);
@@ -81,7 +82,7 @@ module WidgetUtil {
         Graphite.resetColor(dc);
     }
 
-    function drawHeader(dc, height, color, strokeColor, text, textColor) {
+    function drawHeader(dc as Graphics.Dc, height, color, strokeColor, text, textColor) {
         Graphite.setColor(dc, color);
         dc.fillRectangle(0, 0, dc.getWidth(), height);
 
@@ -102,7 +103,7 @@ module WidgetUtil {
         }
     }
 
-    function drawFooter(dc, height, color, strokeColor, text, textColor) {
+    function drawFooter(dc as Graphics.Dc, height, color, strokeColor, text, textColor) {
         Graphite.setColor(dc, color);
         dc.fillRectangle(0, dc.getHeight() - height, dc.getWidth(), height);
 
@@ -128,7 +129,7 @@ module WidgetUtil {
     }
 
     (:round)
-    function drawProgressBar(dc, y, h, progress, activeColor, inactiveColor) {
+    function drawProgressBar(dc as Graphics.Dc, y, h, progress, activeColor, inactiveColor) {
         var r = Graphite.getRadius(dc);
         var start = MathUtil.minX(y, r) - h;
         var end = MathUtil.maxX(y, r) + h;
@@ -147,7 +148,7 @@ module WidgetUtil {
     }
 
     (:rectangle)
-    function drawProgressBar(dc, y, h, progress, activeColor, inactiveColor) {
+    function drawProgressBar(dc as Graphics.Dc, y, h, progress, activeColor, inactiveColor) {
         var start = 0;
         var end = dc.getWidth();
         var w = end - start;
@@ -167,7 +168,7 @@ module WidgetUtil {
     // start indicator
 
     (:round)
-    function drawStartIndicatorWithBitmap(dc, rezId) {
+    function drawStartIndicatorWithBitmap(dc as Graphics.Dc, rezId) {
         var r = Graphite.getRadius(dc) - px(23);
         var pos = MathUtil.polarPos(r, MathUtil.rad(30), Graphite.getCenterX(dc), Graphite.getCenterY(dc));
 
@@ -176,7 +177,7 @@ module WidgetUtil {
     }
 
     (:rectangle)
-    function drawStartIndicatorWithBitmap(dc, rezId) {
+    function drawStartIndicatorWithBitmap(dc as Graphics.Dc, rezId) {
         var x = dc.getWidth() - px(23);
         var y = 0.5 * dc.getHeight(); // sin(30) = 0.5
 
@@ -185,7 +186,7 @@ module WidgetUtil {
     }
 
     (:round)
-    function drawStartIndicator(dc) {
+    function drawStartIndicator(dc as Graphics.Dc) {
         var offset = px(5);
         var width = px(4);
         var strokeWidth = px(1);
@@ -194,7 +195,7 @@ module WidgetUtil {
     }
 
     (:rectangle)
-    function drawStartIndicator(dc) {
+    function drawStartIndicator(dc as Graphics.Dc) {
         var offset = px(5);
         var width = px(4);
         var strokeWidth = px(1);
@@ -209,7 +210,7 @@ module WidgetUtil {
 
     // scrollbar
 
-    function drawVerticalScrollbarSmall(dc, pageCount, index) {
+    function drawVerticalScrollbarSmall(dc as Graphics.Dc, pageCount, index) {
         _drawVerticalScrollbar(dc, 50, pageCount, index, index + 1);
     }
 
@@ -243,7 +244,7 @@ module WidgetUtil {
     }
 
     (:rectangle)
-    function _drawVerticalScrollbar(dc, sizeDeg, itemCount, startIndex, endIndex) {
+    function _drawVerticalScrollbar(dc as Graphics.Dc, sizeDeg, itemCount, startIndex, endIndex) {
         if (itemCount <= 1) {
             return;
         }
@@ -276,7 +277,7 @@ module WidgetUtil {
     // page indicator
 
     (:round)
-    function drawHorizontalPageIndicator(dc, pageCount, index) {
+    function drawHorizontalPageIndicator(dc as Graphics.Dc, pageCount, index) {
         if (pageCount <= 1) {
             return;
         }
@@ -322,7 +323,7 @@ module WidgetUtil {
     }
 
     (:rectangle)
-    function drawHorizontalPageIndicator(dc, pageCount, index) {
+    function drawHorizontalPageIndicator(dc as Graphics.Dc, pageCount, index) {
         if (pageCount <= 1) {
             return;
         }
@@ -364,7 +365,7 @@ module WidgetUtil {
 
     // page arrow
 
-    function drawVerticalPageArrows(dc, pageCount, index, topColor, bottomColor) {
+    function drawVerticalPageArrows(dc as Graphics.Dc, pageCount, index, topColor, bottomColor) {
         if (pageCount <= 1) {
             return;
         }
@@ -381,23 +382,23 @@ module WidgetUtil {
         Graphite.resetColor(dc);
     }
 
-    function drawTopPageArrow(dc) {
+    function drawTopPageArrow(dc as Graphics.Dc) {
         _drawPageArrow(dc, [ Graphite.getCenterX(dc), px(4) ], _DIR_UP);
     }
 
-    function drawBottomPageArrow(dc) {
+    function drawBottomPageArrow(dc as Graphics.Dc) {
         _drawPageArrow(dc, [ Graphite.getCenterX(dc), dc.getHeight() - px(4) ], _DIR_DOWN);
     }
 
-    function drawUpArrow(dc, bottomTo) {
+    function drawUpArrow(dc as Graphics.Dc, bottomTo) {
         _drawPageArrow(dc, [ Graphite.getCenterX(dc), bottomTo - px(4 + 8) ], _DIR_UP);
     }
 
-    function drawDownArrow(dc, bottomTo) {
+    function drawDownArrow(dc as Graphics.Dc, bottomTo) {
         _drawPageArrow(dc, [ Graphite.getCenterX(dc), bottomTo - px(4) ], _DIR_DOWN);
     }
 
-    function _drawPageArrow(dc, point1, direction) {
+    function _drawPageArrow(dc as Graphics.Dc, point1, direction) {
         var width = px(8);
         var height = px(8);
 
@@ -430,7 +431,7 @@ module WidgetUtil {
 
     // list
 
-    function drawPanedList(dc, items, paneSize, cursor, paneHints, mainHints, topHint, paneColors, mainColors) {
+    function drawPanedList(dc as Graphics.Dc, items as Array, paneSize, cursor, paneHints as Array, mainHints as Array, topHint, paneColors as Array, mainColors as Array) {
         var paneHint = paneHints[0];
         var mainHint = mainHints[0];
 
@@ -568,7 +569,7 @@ module WidgetUtil {
         }
     }
 
-    function drawSideList(dc, items, cursor, blackBg) {
+    function drawSideList(dc as Graphics.Dc, items as Array, cursor, blackBg) {
         var colorBg = blackBg ? AppColors.BACKGROUND : AppColors.BACKGROUND_INVERTED;
         var colorSelected = blackBg ? AppColors.TEXT_PRIMARY : AppColors.TEXT_INVERTED;
         var colorUnselected = blackBg ? AppColors.TEXT_SECONDARY: AppColors.TEXT_TERTIARY;
@@ -609,7 +610,6 @@ module WidgetUtil {
 
             var justification = Graphics.TEXT_JUSTIFY_LEFT|Graphics.TEXT_JUSTIFY_VCENTER;
             var yText = Graphite.getCenterY(dc) + (i - cursor) * lineHeight;
-            var margin = px(4);
 
             if (i == cursor) {
                 dc.setColor(colorSelected, colorBg);

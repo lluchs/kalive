@@ -11,8 +11,8 @@
 // You should have received a copy of the GNU General Public License along with Avgånär.
 // If not, see <https://www.gnu.org/licenses/>.
 
+import Toybox.Lang;
 using Toybox.Graphics;
-using Toybox.Lang;
 using Toybox.Math;
 using Toybox.Time;
 using Toybox.WatchUi;
@@ -34,7 +34,7 @@ class StopDetailView extends WatchUi.View {
         _viewModel.enableRequests();
     }
 
-    function onUpdate(dc) {
+    function onUpdate(dc as Graphics.Dc) {
         View.onUpdate(dc);
 
         // draw
@@ -49,7 +49,7 @@ class StopDetailView extends WatchUi.View {
 
     // draw
 
-    hidden function _draw(dc) {
+    hidden function _draw(dc as Graphics.Dc) {
         var stop = _viewModel.stop;
 
         // text
@@ -58,7 +58,7 @@ class StopDetailView extends WatchUi.View {
 
         // departures
         var response = _viewModel.getPageResponse();
-        if (response instanceof Lang.Array) {
+        if (response instanceof Array) {
             _drawDepartures(dc, response);
 
             // indicator: page
@@ -96,7 +96,7 @@ class StopDetailView extends WatchUi.View {
         }
     }
 
-    hidden function _drawHeader(dc, stop) {
+    hidden function _drawHeader(dc as Graphics.Dc, stop) {
         // 19 is font height for XTINY on fr745.
         // set y to half and justify to vcenter for the title to
         // look alright even on devices with different font size for XTINY.
@@ -107,7 +107,7 @@ class StopDetailView extends WatchUi.View {
             Graphics.TEXT_JUSTIFY_CENTER|Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
-    hidden function _drawFooter(dc, stop, noDetails) {
+    hidden function _drawFooter(dc as Graphics.Dc, stop, noDetails) {
         var hFooter = px(42);
         var h = dc.getHeight();
 
@@ -189,11 +189,10 @@ class StopDetailView extends WatchUi.View {
         return bay;
     }
 
-    hidden function _drawDepartures(dc, pageDepartures) {
+    hidden function _drawDepartures(dc as Graphics.Dc, pageDepartures as Array<Departure>) {
         var font = Graphics.FONT_TINY;
         var xOffset = px(10);
         var yOffset = px(68);
-        var rCircle = px(4);
 
         var linePad = 3;
         var wdtSpace = dc.getTextWidthInPixels(" ", font);

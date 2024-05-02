@@ -93,7 +93,7 @@ module NearbyStopsService {
         var stopProducts = [];
         var stops = [];
 
-        var stopsData = data["stops"];
+        var stopsData = data["stops"] as Array<Dictionary>;
         for (var i = 0; i < stopsData.size(); i++) {
             var stopData = stopsData[i];
 

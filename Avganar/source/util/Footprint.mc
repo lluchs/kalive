@@ -30,7 +30,7 @@ module Footprint {
 
     // set
 
-    function setPosLoc(positionLocation) {
+    function setPosLoc(positionLocation as Position.Location or Null) {
         if (positionLocation != null) {
             _lat = positionLocation.toRadians()[0].toDouble();
             _lon = positionLocation.toRadians()[1].toDouble();

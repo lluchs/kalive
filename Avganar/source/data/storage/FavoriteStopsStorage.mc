@@ -11,6 +11,7 @@
 // You should have received a copy of the GNU General Public License along with Avgånär.
 // If not, see <https://www.gnu.org/licenses/>.
 
+import Toybox.Lang;
 using Toybox.Application.Storage;
 
 //! Handles storage for favorite stops.
@@ -20,11 +21,11 @@ module FavoriteStopsStorage {
     const _STORAGE_FAVORITE_STOP_NAMES = "favorite_stop_names";
     const _STORAGE_FAVORITE_STOP_PRODUCTS = "favorite_stop_products";
 
-    var favorites;
+    var favorites as Array<Stop or StopDouble or StopDummy> or Null;
 
-    var _favStopIds;
-    var _favStopNames;
-    var _favStopProducts;
+    var _favStopIds as Array or Null;
+    var _favStopNames as Array or Null;
+    var _favStopProducts as Array or Null;
 
     // set
 
@@ -73,7 +74,7 @@ module FavoriteStopsStorage {
         _save();
     }
 
-    function updateFavoriteProducts(stopId, products) {
+    function updateFavoriteProducts(stopId, products as Array) {
         var index = _favStopIds.indexOf(stopId);
         if (index == -1) {
             return;
@@ -95,7 +96,7 @@ module FavoriteStopsStorage {
         favorites = _buildStops(_favStopIds, _favStopNames, _favStopProducts);
     }
 
-    function _buildStops(ids, names, products) {
+    function _buildStops(ids as Array, names as Array, products as Array) as Array<Stop or StopDouble> {
         var stops = [];
         var addedIds = [];
 

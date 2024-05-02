@@ -27,8 +27,8 @@ class Stop {
 
     hidden var _id;
     hidden var _products = null;
-    hidden var _response;
-    hidden var _bays;
+    hidden var _response as Array<Departure> or ResponseError or Null;
+    hidden var _bays as Dictionary<String, Array<Departure>> = {};
     hidden var _failedRequestCount = 0;
     hidden var _deviationMessages = [];
     hidden var _timeStamp;
@@ -52,7 +52,7 @@ class Stop {
         _products = products;
     }
 
-    function setResponse(response) {
+    function setResponse(response as Array<Departure> or ResponseError) {
         _response = response;
         _timeStamp = TimeUtil.now();
 
@@ -65,13 +65,21 @@ class Stop {
         vibrate();
         _failedRequestCount = 0;
 
+        _rebuildBays();
+    }
+
+    hidden function _rebuildBays() {
         _bays = {};
-        for (var i = 0; i < _response.size(); i++) {
-            var bay = _response[i].getBay();
+        if (!(_response instanceof Array)) {
+            return;
+        }
+        var r = _response as Array<Departure>;
+        for (var i = 0; i < r.size(); i++) {
+            var bay = r[i].getBay();
             if (_bays.hasKey(bay)) {
-                _bays[bay].add(_response[i]);
+                _bays[bay].add(r[i]);
             } else {
-                _bays.put(bay, [_response[i]]);
+                _bays.put(bay, [r[i]]);
             }
         }
     }
@@ -120,7 +128,8 @@ class Stop {
     }
 
     function getDepartures(bay as String or Null) as Array<Departure> {
-        if (bay) {
+        _removeDepartedDepartures();
+        if (bay != null) {
             return _bays.get(bay);
         } else {
             return _response;
@@ -146,29 +155,31 @@ class Stop {
             : null;
     }
 
-    hidden function _removeDepartedDepartures(mode) {
-        if (_response[mode] == null || _response[mode].size() == 0 || !_response[mode][0].hasDeparted()) {
+    hidden function _removeDepartedDepartures() {
+        if (!(_response instanceof Array)) {
+            return;
+        }
+        var r = _response as Array<Departure>;
+        if (r.size() == 0 || !r[0].hasDeparted()) {
             return;
         }
 
         var firstIndex = -1;
 
-        for (var i = 1; i < _response[mode].size(); i++) {
+        for (var i = 1; i < r.size(); i++) {
             // once we get the first departure that has not departed,
             // add it and everything after
-            if (!_response[mode][i].hasDeparted()) {
+            if (!r[i].hasDeparted()) {
                 firstIndex = i;
                 break;
             }
         }
 
         if (firstIndex != -1) {
-            _response[mode] = _response[mode].slice(firstIndex, null);
+            _response = r.slice(firstIndex, null);
         }
-        else {
-            // add null because an ampty array is not matched with the equals() that removeAll() performes.
-            _response[mode] = null;
-        }
+
+        _rebuildBays();
     }
 
 }
