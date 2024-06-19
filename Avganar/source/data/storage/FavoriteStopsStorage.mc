@@ -94,6 +94,17 @@ module FavoriteStopsStorage {
             ArrUtil.filled(_favStopIds.size(), null));
 
         favorites = _buildStops(_favStopIds, _favStopNames, _favStopProducts);
+
+        if (favorites.size() == 0) {
+            _addDefaultFavorites();
+        }
+    }
+
+    function _addDefaultFavorites() {
+        addFavorite(new Stop("de:08212:90", "Hauptbahnhof", null));
+        addFavorite(new Stop("de:08212:1011", "Marktplatz (Pyramide U)", null));
+        addFavorite(new Stop("de:08212:3", "Durlacher Tor/KIT-Campus Süd", null));
+        addFavorite(new Stop("de:08212:37", "Europaplatz/Postgalerie", null));
     }
 
     function _buildStops(ids as Array, names as Array, products as Array) as Array<Stop or StopDouble> {
