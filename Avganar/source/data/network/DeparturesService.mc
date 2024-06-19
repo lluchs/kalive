@@ -83,7 +83,18 @@ class DeparturesService {
         WatchUi.requestUpdate();
     }
 
+    hidden function _findDeviation(deviations as Array<Dictionary>, ref as Dictionary) as Dictionary or Null {
+        for (var i = 0; i < deviations.size(); i++) {
+            if (deviations[i]["participant_ref"] == ref["participant_ref"] && 
+                deviations[i]["participant_ref"] == ref["participant_ref"]) {
+                return deviations[i];
+            }
+        }
+        return null;
+    }
+
     hidden function _handleDeparturesResponseOk(data as Dictionary) {
+        var deviationsData = data["situations"] as Array<Dictionary>;
         var departuresData = data["departures"] as Array<Dictionary>;
 
         if (departuresData.size() == 0) {
@@ -106,7 +117,7 @@ class DeparturesService {
             var destination = departureData["destination"];
             var plannedDateTime = departureData["timetable_time"];
             var expectedDateTime = departureData["estimated_time"];
-            var deviations = []; // TODO
+            var deviations = departureData["situations"] as Array<Dictionary>;
 
             var isRealTime = expectedDateTime != null;
             var moment = TimeUtil.parseRFC3339(plannedDateTime);
@@ -115,7 +126,13 @@ class DeparturesService {
             }
             var deviationLevel = 0;
             var deviationMessages = [];
-            var cancelled = false;
+            var cancelled = false; // TODO: Is that even included anywhere?
+            for (var i = 0; i < deviations.size(); i++) {
+                var deviation = _findDeviation(deviationsData, deviations[i]);
+                if (deviation == null) { continue; }
+                deviationLevel = MathUtil.max(deviationLevel, deviation["priority"]);
+                deviationMessages.add(deviation["description"] + "\n" + deviation["summary"]);
+            }
 
             var departure = new Departure(mode, bay, line, destination, moment,
                 deviationLevel, deviationMessages, cancelled, isRealTime);
