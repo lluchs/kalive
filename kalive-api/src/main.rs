@@ -110,8 +110,10 @@ async fn get_departures(
         .await?;
 
     let res_xml = res.text().await?;
-    let departures = trias::parse_stop_event_response(&res_xml)?;
-    Ok(Json(json!({ "departures": departures })))
+    let (departures, situations) = trias::parse_stop_event_response(&res_xml)?;
+    Ok(Json(
+        json!({ "departures": departures, "situations": situations }),
+    ))
 }
 
 // Make our own error that wraps `anyhow::Error`.

@@ -1,3 +1,6 @@
+use std::io::BufRead;
+
+use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use chrono::prelude::*;
@@ -5,7 +8,8 @@ use quick_xml::events::{BytesText, Event};
 use quick_xml::reader::Reader;
 use quick_xml::writer::Writer;
 
-use crate::{Departure, Stop};
+use crate::SituationRef;
+use crate::{Departure, Situation, Stop};
 
 const STOP_EVENT_REQUEST_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <Trias version="1.1" xmlns="http://www.vdv.de/trias" xmlns:siri="http://www.siri.org.uk/siri" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -82,8 +86,10 @@ fn process_departure(d: &mut Departure) {
 }
 
 /// Parse a TRIAS StopEventResponse XML.
-pub fn parse_stop_event_response(xml: &str) -> Result<Vec<Departure>> {
+pub fn parse_stop_event_response(xml: &str) -> Result<(Vec<Departure>, Vec<Situation>)> {
     let mut reader = Reader::from_str(xml);
+    let mut situations = Vec::new();
+    let mut situation_ref: SituationRef = Default::default();
     let mut departures = Vec::new();
     let mut current_departure: Option<Departure> = None;
     let mut in_text = false;
@@ -107,7 +113,11 @@ pub fn parse_stop_event_response(xml: &str) -> Result<Vec<Departure>> {
                 b"StopEventResult" => {
                     current_departure = Some(Departure::default());
                 }
-                b"Text" | b"TimetabledTime" | b"EstimatedTime" | b"PtMode" => {
+                b"Situations" => {
+                    situations = parse_situations(&mut reader)?;
+                }
+                b"Text" | b"TimetabledTime" | b"EstimatedTime" | b"PtMode" | b"ParticipantRef"
+                | b"SituationNumber" => {
                     current_text = Some(String::new());
                     in_text = true;
                 }
@@ -135,13 +145,90 @@ pub fn parse_stop_event_response(xml: &str) -> Result<Vec<Departure>> {
                 b"Name" => set_to_text!(mode_name),
                 b"PublishedLineName" => set_to_text!(line),
                 b"DestinationText" => set_to_text!(destination),
+                b"ParticipantRef" => {
+                    if let Some(text) = current_text.take() {
+                        situation_ref.participant_ref = text.into();
+                    }
+                }
+                b"SituationNumber" => {
+                    if let Some(text) = current_text.take() {
+                        situation_ref.situation_number = text.into();
+                    }
+                }
+                b"SituationFullRef" => {
+                    if let Some(ref mut dep) = current_departure {
+                        dep.situations.push(std::mem::take(&mut situation_ref));
+                    }
+                }
                 _ => {}
             },
             _ => {}
         }
     }
 
-    Ok(departures)
+    Ok((departures, situations))
+}
+
+fn parse_situations<R: BufRead>(reader: &mut Reader<R>) -> Result<Vec<Situation>> {
+    let mut situations: Vec<Situation> = Vec::new();
+    let mut situation: Situation = Default::default();
+    let mut in_text = false;
+    let mut current_text: Option<String> = None;
+    let mut buf = Vec::new();
+    macro_rules! set_to_text {
+        ($prop:ident) => {
+            if let Some(text) = current_text.take() {
+                situation.$prop = text.into();
+            }
+        };
+    }
+    loop {
+        match reader.read_event_into(&mut buf)? {
+            Event::Eof => bail!("unexpected EOF in PtSituation"),
+            Event::Start(e) => match e.name().as_ref() {
+                b"PtSituation" => {
+                    situation = Default::default();
+                }
+                b"ParticipantRef" | b"SituationNumber" | b"CreationTime" | b"StartTime"
+                | b"EndTime" | b"Priority" | b"ScopeType" | b"Summary" | b"Description"
+                | b"Detail" => {
+                    current_text = Some(String::new());
+                    in_text = true;
+                }
+                _ => {}
+            },
+            Event::Text(e) => {
+                if in_text {
+                    if let Some(ref mut t) = current_text {
+                        t.push_str(&String::from_utf8_lossy(e.as_ref()));
+                    }
+                }
+            }
+            Event::End(e) => match e.name().as_ref() {
+                b"Situations" => break,
+                b"PtSituation" => {
+                    situations.push(std::mem::take(&mut situation));
+                }
+                b"ParticipantRef" => set_to_text!(participant_ref),
+                b"SituationNumber" => set_to_text!(situation_number),
+                b"CreationTime" => set_to_text!(creation_time),
+                b"StartTime" => set_to_text!(validity_start_time),
+                b"EndTime" => set_to_text!(validity_end_time),
+                b"Priority" => {
+                    if let Some(text) = current_text.take() {
+                        situation.priority = text.parse().unwrap_or_default();
+                    }
+                }
+                b"ScopeType" => set_to_text!(scope_type),
+                b"Summary" => set_to_text!(summary),
+                b"Description" => set_to_text!(description),
+                b"Detail" => set_to_text!(detail),
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+    Ok(situations)
 }
 
 const LOCATION_INFORMATION_REQUEST_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -478,6 +565,57 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
       <StopEventResponse>
         <StopEventResponseContext>
           <Situations>
+            <PtSituation>
+              <CreationTime xmlns="http://www.siri.org.uk/siri">2024-01-29T11:41:00Z</CreationTime>
+              <ParticipantRef xmlns="http://www.siri.org.uk/siri">KVV</ParticipantRef>
+              <SituationNumber xmlns="http://www.siri.org.uk/siri">110008062_KVV_ICSKVV</SituationNumber>
+              <Version xmlns="http://www.siri.org.uk/siri">9</Version>
+              <Source xmlns="http://www.siri.org.uk/siri">
+                <SourceType>other</SourceType>
+              </Source>
+              <Progress xmlns="http://www.siri.org.uk/siri">open</Progress>
+              <ValidityPeriod xmlns="http://www.siri.org.uk/siri">
+                <StartTime>2023-12-10T02:00:00Z</StartTime>
+                <EndTime>2500-12-30T23:00:59Z</EndTime>
+              </ValidityPeriod>
+              <UnknownReason xmlns="http://www.siri.org.uk/siri">unknown</UnknownReason>
+              <Priority xmlns="http://www.siri.org.uk/siri">3</Priority>
+              <Audience xmlns="http://www.siri.org.uk/siri">public</Audience>
+              <ScopeType xmlns="http://www.siri.org.uk/siri">line</ScopeType>
+              <Planned xmlns="http://www.siri.org.uk/siri">false</Planned>
+              <Language xmlns="http://www.siri.org.uk/siri"/>
+              <Summary xmlns="http://www.siri.org.uk/siri" overridden="true">AVG: temporäre Anpassung des Fahrplanangebotes</Summary>
+              <Description xmlns="http://www.siri.org.uk/siri" overridden="true">Linien S4, S5, S6, S7, S8, S12, S31, S32</Description>
+              <Detail xmlns="http://www.siri.org.uk/siri" overridden="true">&lt;p&gt;(kue) Die Albtal-Verkehrs-Gesellschaft (AVG) wird&lt;br /&gt;&lt;br /&gt;&lt;span style="color: #c30a37;"&gt;&lt;strong&gt;vom 08. Januar 2024&lt;/strong&gt;&lt;/span&gt;&lt;br /&gt;&lt;span style="color: #c30a37;"&gt;&lt;strong&gt;bis 08. Juni 2024&lt;/strong&gt;&lt;/span&gt;&lt;br /&gt;&lt;br /&gt;das Fahrplanangebot auf ihren Stadtbahnlinien reduzieren. Grund hierf&amp;uuml;r ist die angespannte Personalsituation. Die gezielte Ausd&amp;uuml;nnung umfasst weniger als drei Prozent der gesamten Verkehrsleistung, die die AVG erbringt.&lt;br /&gt;&lt;br /&gt;Die einzelnen Fahrplan&amp;auml;nderungen &lt;strong&gt;ab dem 08. Januar 2024 i&lt;/strong&gt;m &amp;Uuml;berblick:&lt;br /&gt;&lt;br /&gt;&lt;strong&gt;Linie S12&lt;/strong&gt;&lt;br /&gt;- es entf&amp;auml;llt ein Zugpaar zwischen Ittersbach Rathaus und Karlsruhe Rheinhafen. Betroffen hiervon sind folgende Verbindungen:&lt;br /&gt;&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; Linie S12 (40005), 7:37 &amp;ndash; 8:40 Uhr Ittersbach Rathaus (Abfahrt 7:37 Uhr) &amp;ndash; Karlsruhe Rheinhafen (Ankunft 8.40 Uhr)&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; Linie S12 (40008), Karlsruhe Rheinhafen (Abfahrt 16:25)&amp;nbsp; &amp;ndash; Ittersbach Rathaus (Ankunft 17:30 Uhr)&lt;br /&gt;&lt;br /&gt;&lt;strong&gt;Linie S31&lt;/strong&gt;&lt;br /&gt;- montags bis freitags entf&amp;auml;llt der Zwischentakt Ubstadt Ort &amp;ndash; Odenheim am Nachmittag zwischen 13 und 18 Uhr (jeweils Abfahrt zur Minute :40 in Ubstadt Ort bzw. zur Minute :03 in Odenheim); das bedeutet eine Fahrplan-Reduzierung auf einen 20/40-Takt (der Menzinger Zugteil f&amp;auml;hrt jeweils)&lt;br /&gt;&lt;br /&gt;- samstags und sonntags entf&amp;auml;llt die H&amp;auml;lfte der Fahrten im Abschnitt Ubstadt Ort &amp;ndash; Odenheim (jeweils Abfahrt zur Minute :00 in Ubstadt Ort bzw. zur Minute :23 in Odenheim); das bedeutet eine Reduzierung auf einen Stundentakt (der Menzinger Zugteil f&amp;auml;hrt jeweils)&lt;br /&gt;&lt;br /&gt;&lt;strong&gt;Linie S4&lt;/strong&gt;&lt;br /&gt;- es entf&amp;auml;llt t&amp;auml;glich der Zwischentakt zwischen Bretten und Flehingen (au&amp;szlig;er in der Hauptverkehrszeit): Die Fahrten der Linie S4 aus Richtung Karlsruhe enden zur Minute :22 in Bretten Stadtmitte und fahren von dort zur Minute :34 wieder zur&amp;uuml;ck nach Karlsruhe.&lt;br /&gt;&lt;br /&gt;- montags bis freitags entfallen nachmittags folgende Verdichterfahrten zwischen Heilbronn Hbf-Vorplatz (Willy-Brandt-Platz) und Heilbronn Pf&amp;uuml;hlpark/Weinsberg:&lt;br /&gt;&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 14:51 Uhr HN Hbf-Vorplatz &amp;ndash; 15:06 Uhr Weinsberg&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 15:23 Uhr HN Pf&amp;uuml;hlpark &amp;ndash; 15:33 Uhr HN Hbf-Vorplatz&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 15:49 Uhr Weinsberg &amp;ndash; 16:05 Uhr HN Hbf-Vorplatz&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 15:51 Uhr HN Hbf-Vorplatz &amp;ndash; 16:06 Uhr Weinsberg&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 16:23 Uhr HN Pf&amp;uuml;hlpark &amp;ndash; 16:33 Uhr HN Hbf-Vorplatz&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 16:49 Uhr Weinsberg &amp;ndash; 17:05 Uhr HN Hbf-Vorplatz&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 16:51 Uhr HN Hbf-Vorplatz &amp;ndash; 17:06 Uhr Weinsberg&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 17:49 Uhr Weinsberg &amp;ndash; 18:05 Uhr HN Hbf-Vorplatz&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 17:51 Uhr HN Hbf-Vorplatz &amp;ndash; 18:06 Uhr Weinsberg&lt;br /&gt;&lt;br /&gt;&lt;strong&gt;Linie S5&lt;/strong&gt;&lt;br /&gt;- montags bis freitags entfallen nach der morgendlichen Hauptverkehrszeit zwischen 9 und 19 Uhr je zwei Fahrten pro Stunde zwischen Karlsruhe Tullastra&amp;szlig;e und Knielingen Rheinbergstra&amp;szlig;e. Diese Bahnen der Linie S5, die sonst zu den Minuten :12 und :52 an der Rheinbergstra&amp;szlig;e beginnen und dort zu den Minuten :4 und :44 enden, verkehren nur noch im Abschnitt zwischen Tullastra&amp;szlig;e und Pfinztal.&lt;/p&gt;
+&lt;p&gt;- sonntags entfallen folgende Verbindungen:&lt;br /&gt;&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 07:11 Uhr KA Tullastra&amp;szlig;e &amp;ndash; 07:53 Uhr W&amp;ouml;rth Badepark&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 08:05 Uhr W&amp;ouml;rth Badepark &amp;ndash; 09:06 Uhr S&amp;ouml;llingen Bf&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 08:12 Uhr Knielingen Rheinbergstra&amp;szlig;e &amp;ndash; 08:51 Uhr Berghausen&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 09:05 Uhr Berghausen &amp;ndash; 09:44 Uhr Knielingen Rheinbergstra&amp;szlig;e&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 09:51 Uhr S&amp;ouml;llingen Bf &amp;ndash; 10:53 Uhr W&amp;ouml;rth Badepark&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 09:52 Uhr Knielingen Rheinbergstra&amp;szlig;e &amp;ndash; 10:37 Uhr S&amp;ouml;llingen Bf&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 10:51 Uhr S&amp;ouml;llingen Bf &amp;ndash; 11:53 Uhr W&amp;ouml;rth Badepark&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 11:05 Uhr W&amp;ouml;rth Badepark &amp;ndash; 12:06 Uhr S&amp;ouml;llingen Bf&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 12:05 Uhr W&amp;ouml;rth Badepark &amp;ndash; 13:06 Uhr S&amp;ouml;llingen Bf&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 12:51 Uhr S&amp;ouml;llingen Bf &amp;ndash; 13:53 Uhr W&amp;ouml;rth Badepark&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 13:18 Uhr S&amp;ouml;llingen Bf &amp;ndash; 14:04 Uhr Knielingen Rheinbergstra&amp;szlig;e&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 14:05 Uhr W&amp;ouml;rth Badepark &amp;ndash; 15:06 Uhr S&amp;ouml;llingen Bf&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 14:12 Uhr Knielingen Rheinbergstra&amp;szlig;e &amp;ndash; 14:51 Uhr Berghausen&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 15:05 Uhr Berghausen &amp;ndash; 15:44 Uhr Knielingen Rheinbergstra&amp;szlig;e&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 15:51 Uhr S&amp;ouml;llingen Bf &amp;ndash; 16:53 Uhr W&amp;ouml;rth Badepark&lt;br /&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp; 17:05 Uhr W&amp;ouml;rth Badepark &amp;ndash; 17:45 Uhr KA Tullastra&amp;szlig;e&lt;/p&gt;
+&lt;p&gt;&lt;br /&gt;&lt;strong&gt;Linien S32, S6, S7 und S8&lt;/strong&gt;&lt;br /&gt;- Auf diesen Linien entfallen einzelne Fahrtabschnitte.&lt;/p&gt;</Detail>
+            </PtSituation>
+            <PtSituation>
+              <CreationTime xmlns="http://www.siri.org.uk/siri">2024-03-20T13:05:00Z</CreationTime>
+              <ParticipantRef xmlns="http://www.siri.org.uk/siri">KVV</ParticipantRef>
+              <SituationNumber xmlns="http://www.siri.org.uk/siri">110008317_KVV_ICSKVV</SituationNumber>
+              <Version xmlns="http://www.siri.org.uk/siri">1</Version>
+              <Source xmlns="http://www.siri.org.uk/siri">
+                <SourceType>other</SourceType>
+              </Source>
+              <Progress xmlns="http://www.siri.org.uk/siri">open</Progress>
+              <ValidityPeriod xmlns="http://www.siri.org.uk/siri">
+                <StartTime>2024-03-23T05:45:00Z</StartTime>
+                <EndTime>2024-04-15T01:30:59Z</EndTime>
+              </ValidityPeriod>
+              <UnknownReason xmlns="http://www.siri.org.uk/siri">unknown</UnknownReason>
+              <Priority xmlns="http://www.siri.org.uk/siri">3</Priority>
+              <Audience xmlns="http://www.siri.org.uk/siri">public</Audience>
+              <ScopeType xmlns="http://www.siri.org.uk/siri">line</ScopeType>
+              <Planned xmlns="http://www.siri.org.uk/siri">false</Planned>
+              <Language xmlns="http://www.siri.org.uk/siri"/>
+              <Summary xmlns="http://www.siri.org.uk/siri" overridden="true">Kaiserplatz: Streckensperrung aufgrund von Gleisarbeiten</Summary>
+              <Description xmlns="http://www.siri.org.uk/siri" overridden="true">Linien S12, 2, 3, 4 und 9</Description>
+              <Detail xmlns="http://www.siri.org.uk/siri" overridden="true">&lt;p&gt;Die VBK-Strecke im Bereich Kaiserstra&amp;szlig;e wird&lt;/p&gt;
+&lt;p&gt;&lt;span style="color: #9b2321;"&gt;&lt;strong&gt;von Samstag, 23. M&amp;auml;rz, 6.45 Uhr &lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style="color: #9b2321;"&gt;&lt;strong&gt;bis Montag, 15. April, 3.30 Uhr&lt;/strong&gt; &lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;in beiden Fahrtrichtungen f&amp;uuml;r den Bahnverkehr komplett gesperrt. W&amp;auml;hrend der Bauarbeiten am Kaiserplatz wird kein eigener Ersatzverkehr eingerichtet. Daf&amp;uuml;r verkehrt w&amp;auml;hrend der Ma&amp;szlig;nahme aber die Tramlinie 9. Diese Linie pendelt zwischen den Haltestellen Europaplatz/Postgalerie und der Haltestelle Tivoli. Die Linie f&amp;auml;hrt dabei &amp;uuml;ber den Hauptbahnhof. Zum genauen Routenverlauf der Linie 9: Europaplatz/Postgalerie &amp;ndash; Karlstor/Bundesgerichtshof &amp;ndash; Mathystra&amp;szlig;e &amp;ndash; Kolpingplatz &amp;ndash; Ebertstra&amp;szlig;e &amp;ndash; Hauptbahnhof &amp;ndash; Poststra&amp;szlig;e &amp;ndash; Tivoli.&lt;/p&gt;</Detail>
+            </PtSituation>
           </Situations>
         </StopEventResponseContext>
         <StopEventResult>
@@ -665,8 +803,10 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
   </ServiceDelivery>
 </Trias>
 "#;
-        let departures = parse_stop_event_response(xml).unwrap();
+        let (departures, situations) = parse_stop_event_response(xml).unwrap();
         assert!(departures.len() == 3);
+        assert!(situations.len() == 2);
+        println!("{:?}", situations);
 
         assert_eq!(
             &departures,
@@ -679,6 +819,11 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
                     mode_name: "S-Bahn".to_string(),
                     timetable_time: "2024-04-11T21:30:00Z".to_string(),
                     estimated_time: Some("2024-04-11T21:34:00Z".to_string()),
+                    situations: [SituationRef {
+                        participant_ref: "KVV".to_string(),
+                        situation_number: "110008062_KVV_ICSKVV".to_string()
+                    }]
+                    .into(),
                 },
                 Departure {
                     line: "4".to_string(),
@@ -688,6 +833,11 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
                     mode_name: "Straßenbahn".to_string(),
                     timetable_time: "2024-04-11T21:32:30Z".to_string(),
                     estimated_time: Some("2024-04-11T21:32:30Z".to_string()),
+                    situations: [SituationRef {
+                        participant_ref: "KVV".to_string(),
+                        situation_number: "110008317_KVV_ICSKVV".to_string()
+                    }]
+                    .into(),
                 },
                 Departure {
                     line: "IC 60403".to_string(),
@@ -696,7 +846,8 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
                     mode: "rail".to_string(),
                     mode_name: "InterCity".to_string(),
                     timetable_time: "2024-04-27T02:03:00Z".to_string(),
-                    estimated_time: None
+                    estimated_time: None,
+                    situations: Vec::new(),
                 }
             ]
         );
