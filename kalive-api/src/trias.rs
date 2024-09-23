@@ -117,7 +117,7 @@ pub fn parse_stop_event_response(xml: &str) -> Result<(Vec<Departure>, Vec<Situa
                     situations = parse_situations(&mut reader)?;
                 }
                 b"Text" | b"TimetabledTime" | b"EstimatedTime" | b"PtMode" | b"ParticipantRef"
-                | b"SituationNumber" => {
+                | b"SituationNumber" | b"Cancelled" => {
                     current_text = Some(String::new());
                     in_text = true;
                 }
@@ -158,6 +158,15 @@ pub fn parse_stop_event_response(xml: &str) -> Result<(Vec<Departure>, Vec<Situa
                 b"SituationFullRef" => {
                     if let Some(ref mut dep) = current_departure {
                         dep.situations.push(std::mem::take(&mut situation_ref));
+                    }
+                }
+                b"Cancelled" => {
+                    if let Some(text) = current_text.take() {
+                        if text == "true" {
+                            if let Some(ref mut dep) = current_departure {
+                                dep.cancelled = true;
+                            }
+                        }
                     }
                 }
                 _ => {}
@@ -798,13 +807,77 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
             </Service>
           </StopEvent>
         </StopEventResult>
+        <StopEventResult>
+          <ResultId>ID-BE808EA9-27C0-44BE-B513-AA91C6EC2014</ResultId>
+          <StopEvent>
+            <ThisCall>
+              <CallAtStop>
+                <StopPointRef>de:08212:98:1:1</StopPointRef>
+                <StopPointName>
+                  <Text>Karlsruhe Poststraße</Text>
+                  <Language>de</Language>
+                </StopPointName>
+                <PlannedBay>
+                  <Text>Gleis 1</Text>
+                  <Language>de</Language>
+                </PlannedBay>
+                <ServiceDeparture>
+                  <TimetabledTime>2024-09-23T19:39:00Z</TimetabledTime>
+                </ServiceDeparture>
+                <StopSeqNumber>35</StopSeqNumber>
+                <NotServicedStop>true</NotServicedStop>
+              </CallAtStop>
+            </ThisCall>
+            <Service>
+              <OperatingDayRef>2024-09-23</OperatingDayRef>
+              <JourneyRef>kvv:22304:E:H:s24:19926</JourneyRef>
+              <LineRef>kvv:22304:E:H</LineRef>
+              <DirectionRef>outward</DirectionRef>
+              <Mode>
+                <PtMode>rail</PtMode>
+                <RailSubmode>suburbanRailway</RailSubmode>
+                <Name>
+                  <Text>S-Bahn</Text>
+                  <Language>de</Language>
+                </Name>
+              </Mode>
+              <PublishedLineName>
+                <Text>S-Bahn S4</Text>
+                <Language>de</Language>
+              </PublishedLineName>
+              <OperatorRef>kvv:01</OperatorRef>
+              <RouteDescription>
+                <Text>Öhringen - Heilbronn - Karlsruhe</Text>
+                <Language>de</Language>
+              </RouteDescription>
+              <Attribute>
+                <Text>
+                  <Text>Stufenloses Fahrzeug, WLAN</Text>
+                  <Language>de</Language>
+                </Text>
+                <Code>934952</Code>
+                <Mandatory>false</Mandatory>
+              </Attribute>
+              <OriginStopPointRef>de:08125:5404:1:1</OriginStopPointRef>
+              <OriginText>
+                <Text>Eppingen</Text>
+                <Language>de</Language>
+              </OriginText>
+              <DestinationText>
+                <Text>Albtalbahnhof über Hbf</Text>
+                <Language>de</Language>
+              </DestinationText>
+              <Cancelled>true</Cancelled>
+            </Service>
+          </StopEvent>
+        </StopEventResult>
        </StopEventResponse>
     </DeliveryPayload>
   </ServiceDelivery>
 </Trias>
 "#;
         let (departures, situations) = parse_stop_event_response(xml).unwrap();
-        assert!(departures.len() == 3);
+        assert!(departures.len() == 4);
         assert!(situations.len() == 2);
         println!("{:?}", situations);
 
@@ -819,6 +892,7 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
                     mode_name: "S-Bahn".to_string(),
                     timetable_time: "2024-04-11T21:30:00Z".to_string(),
                     estimated_time: Some("2024-04-11T21:34:00Z".to_string()),
+                    cancelled: false,
                     situations: [SituationRef {
                         participant_ref: "KVV".to_string(),
                         situation_number: "110008062_KVV_ICSKVV".to_string()
@@ -833,6 +907,7 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
                     mode_name: "Straßenbahn".to_string(),
                     timetable_time: "2024-04-11T21:32:30Z".to_string(),
                     estimated_time: Some("2024-04-11T21:32:30Z".to_string()),
+                    cancelled: false,
                     situations: [SituationRef {
                         participant_ref: "KVV".to_string(),
                         situation_number: "110008317_KVV_ICSKVV".to_string()
@@ -847,8 +922,20 @@ const STOP_EVENT_RESPONSE_XML: &str = r#"
                     mode_name: "InterCity".to_string(),
                     timetable_time: "2024-04-27T02:03:00Z".to_string(),
                     estimated_time: None,
+                    cancelled: false,
                     situations: Vec::new(),
-                }
+                },
+                Departure {
+                    line: "S4".to_string(),
+                    destination: "Albtalbahnhof über Hbf".to_string(),
+                    bay: Some("Gleis 1".to_string()),
+                    mode: "rail".to_string(),
+                    mode_name: "S-Bahn".to_string(),
+                    timetable_time: "2024-09-23T19:39:00Z".to_string(),
+                    estimated_time: None,
+                    cancelled: true,
+                    situations: Vec::new(),
+                },
             ]
         );
     }

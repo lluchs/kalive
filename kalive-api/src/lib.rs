@@ -20,6 +20,7 @@ pub struct Departure {
     pub mode_name: String,
     pub timetable_time: String,
     pub estimated_time: Option<String>,
+    pub cancelled: bool,
     pub situations: Vec<SituationRef>,
 }
 
