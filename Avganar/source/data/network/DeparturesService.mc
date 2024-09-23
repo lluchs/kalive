@@ -117,6 +117,7 @@ class DeparturesService {
             var destination = departureData["destination"];
             var plannedDateTime = departureData["timetable_time"];
             var expectedDateTime = departureData["estimated_time"];
+            var cancelled = departureData["cancelled"];
             var deviations = departureData["situations"] as Array<Dictionary>;
 
             var isRealTime = expectedDateTime != null;
@@ -126,7 +127,6 @@ class DeparturesService {
             }
             var deviationLevel = 0;
             var deviationMessages = [];
-            var cancelled = false; // TODO: Is that even included anywhere?
             for (var i = 0; i < deviations.size(); i++) {
                 var deviation = _findDeviation(deviationsData, deviations[i]);
                 if (deviation == null) { continue; }
