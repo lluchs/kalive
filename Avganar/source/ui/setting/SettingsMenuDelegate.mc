@@ -48,25 +48,25 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         ));
 
         // max stops
-        _menu.addItem(new WatchUi.MenuItem(
-            rez(Rez.Strings.itm_settings_max_stops), SettingsStorage.getMaxStops().toString(),
-            ITEM_MAX_STOPS, {}
-        ));
+        // _menu.addItem(new WatchUi.MenuItem(
+        //     rez(Rez.Strings.itm_settings_max_stops), SettingsStorage.getMaxStops().toString(),
+        //     ITEM_MAX_STOPS, {}
+        // ));
 
         // max departures
-        _menu.addItem(new WatchUi.MenuItem(
-            rez(Rez.Strings.itm_settings_max_departures),
-            SettingsStorage.getMaxDepartures() == -1
-                ? rez(Rez.Strings.itm_settings_max_departures_unlimited)
-                : SettingsStorage.getMaxDepartures().toString(),
-            ITEM_MAX_DEPARTURES, {}
-        ));
+        // _menu.addItem(new WatchUi.MenuItem(
+        //     rez(Rez.Strings.itm_settings_max_departures),
+        //     SettingsStorage.getMaxDepartures() == -1
+        //         ? rez(Rez.Strings.itm_settings_max_departures_unlimited)
+        //         : SettingsStorage.getMaxDepartures().toString(),
+        //     ITEM_MAX_DEPARTURES, {}
+        // ));
 
         // default time window
-        _menu.addItem(new WatchUi.MenuItem(
-            rez(Rez.Strings.itm_settings_time_window), SettingsStorage.getDefaultTimeWindow() + " min",
-            ITEM_TIME_WINDOW, {}
-        ));
+        // _menu.addItem(new WatchUi.MenuItem(
+        //     rez(Rez.Strings.itm_settings_time_window), SettingsStorage.getDefaultTimeWindow() + " min",
+        //     ITEM_TIME_WINDOW, {}
+        // ));
 
         // minute symbol
         _menu.addItem(new WatchUi.MenuItem(
