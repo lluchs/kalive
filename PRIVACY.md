@@ -1,18 +1,20 @@
 # Privacy Policy
 
-By downloading and using Avgånär you agree to this Privacy Policy. It may change without notice, and by continuing to use the application you agree to the changes.
+By downloading and using KA.live you agree to this Privacy Policy. It may change without notice, and by continuing to use the application you agree to the changes.
 
 ## What is collected
 
-Avgånär does not store any user data, but location is sent to Trafiklab in order to make requests. For details on how they process data, please visit https://www.trafiklab.se/api/trafiklab-apis/sl/licence/. Avgånär is not responsible for how they use the data provided.
+KA.live has three components that process and store data.
 
-What is sent to Trafiklab:
+The **local app** on your device stores your favorite stops and settings.
 
-- location (latitude and longitude)
-- settings preferences
-  - max stops
-  - default time window
+The **API gateway** receives requests for nearby stops (including your current location) and for current depatures (including the stop's identifier).
+It forwards the request to KVV's TRIAS API and returns the response to your device.
+It does not store any request or response data.
+
+Finally, **KVV's TRIAS API** receives your current location and the identifiers of any stops you request the departures for from the API gateway.
+Visit [KVV's privacy policy](https://www.kvv.de/unternehmen/rechtliche-hinweise/datenschutzbestimmungen.html) for information on how they process data.
 
 ## Contact information
 
-For questions or concerns, please contact me at felwal.studios@proton.me.
+For questions or concerns, please contact me at <kalive@lwrl.de>.
