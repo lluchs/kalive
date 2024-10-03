@@ -60,6 +60,7 @@ class Departure {
         "5"  => [0xffffff, 0x00c0f3],
         "6"  => [0xffffff, 0xa6ce42],
         "8"  => [0x000000, 0xf7931d],
+        "9"  => [0xffffff, 0xb6a9a6],
         "17" => [0xffffff, 0x660000],
         "18" => [0xffffff, 0x197248],
     };
