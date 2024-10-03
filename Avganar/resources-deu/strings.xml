@@ -1,0 +1,92 @@
+<strings>
+
+    <!-- message -->
+
+    <!-- status message -->
+    <string id="msg_i_stops_no_gps">Warte auf GPS ...</string>
+    <string id="msg_i_stops_requesting">Lädt ...</string>
+    <string id="msg_i_stops_location_off">Standort deaktiviert</string>
+    <string id="msg_i_departures_requesting">Lädt ...</string>
+
+    <!-- response message -->
+    <string id="msg_i_stops_none">Keine Haltestellen</string>
+    <string id="msg_i_departures_none">Keine Abfahrten</string>
+
+    <!-- request error -->
+    <string id="msg_e_unknown">Unbekannter Fehler</string>
+    <string id="msg_e_queue_full">Warteschlange voll</string>
+    <string id="msg_e_connection">Keine Verbindung</string>
+    <string id="msg_e_memory">Speicher voll</string>
+    <string id="msg_e_cancelled">Anfrage abgebrochen</string>
+    <string id="msg_e_timeout">Zeitüberschreitung</string>
+    <string id="msg_e_bad_request">Client-Fehler</string>
+    <string id="msg_e_not_found">Ungültige Anfrage</string>
+    <string id="msg_e_general">Fehler</string>
+
+    <!-- response error -->
+    <string id="msg_e_invalid">Ungültige Antwort</string>
+    <string id="msg_e_null_data">Keine Daten</string>
+    <string id="msg_e_server">Serverfehler</string>
+    <string id="msg_e_proxy">Serverfehler</string>
+    <string id="msg_e_limit_minute">Quota überschritten (Minute)</string>
+    <string id="msg_e_limit_month">Quota überschritten (Monat)</string>
+
+    <!-- view -->
+
+    <!-- preview -->
+    <string id="lbl_preview_msg_no_stops">Haltestellen anzeigen</string>
+
+    <!-- glance -->
+    <string id="lbl_glance_caption_no_stops" scope="glance">Keine letzten Haltestellen</string>
+
+    <!-- list -->
+    <string id="lbl_list_nearby">In der Nähe</string>
+    <string id="lbl_list_favorites">Favoriten</string>
+    <string id="lbl_list_favorites_one">Favorit</string>
+    <string id="lbl_list_favorites_none">Keine Favoriten</string>
+    <string id="lbl_list_retry">Wiederholen</string>
+
+    <!-- detail -->
+    <string id="itm_detail_departure_null">—</string>
+    <string id="itm_detail_departure_now">jetzt</string>
+    <string id="itm_detail_departure_minutes_long"> min</string>
+    <string id="itm_detail_departure_minutes_short">m</string>
+    <string id="itm_detail_departure_minutes_tiny">'</string>
+    <string id="lbl_detail_mode_letter_bus">B</string>
+    <string id="lbl_detail_mode_letter_train">R</string>
+    <string id="lbl_detail_mode_letter_tram">T</string>
+    <string id="lbl_detail_mode_letter_unknown">?</string>
+    <string id="lbl_detail_deviation_none">Keine Störungen</string>
+
+    <!-- modes menu -->
+    <string id="itm_modes_continue">Weiter</string>
+    <string id="itm_modes_bus">Busse</string>
+    <string id="itm_modes_train">Züge</string>
+    <string id="itm_modes_tram">Trams</string>
+
+    <!-- dialog -->
+    <string id="lbl_dialog_no_favorites_title">Keine Favoriten</string>
+    <string id="lbl_dialog_no_favorites_msg">Favoriten über das Menü einstellen</string>
+
+    <!-- options -->
+    <string id="lbl_options_title">Optionen</string>
+    <string id="itm_options_favorite_add">Favorit setzen</string>
+    <string id="itm_options_favorite_remove">Favorit entfernen</string>
+    <string id="itm_options_favorite_move_up">Hoch</string>
+    <string id="itm_options_favorite_move_down">Runter</string>
+    <string id="itm_options_about">Über</string>
+
+    <!-- settings -->
+    <string id="lbl_settings_title">Einstellungen</string>
+    <string id="itm_settings_location">Standort verwenden</string>
+    <string id="itm_settings_vibrate">Vibration bei Antwort</string>
+    <string id="itm_settings_max_stops">Max. Haltestellen</string>
+    <string id="itm_settings_max_departures">Max. Abfahrten</string>
+    <string id="itm_settings_max_departures_unlimited">Kein Limit</string>
+    <string id="itm_settings_time_window">Zeitfenster</string>
+    <string id="itm_settings_minute_symbol">Minutensymbol</string>
+
+    <!-- info -->
+    <string id="lbl_info_about">Gemacht von Lukas Werling. Basiert auf Avgånär von Felix Wallin.\n\nKeine offizielle KVV-App. Der KVV haftet nicht für Inhalte.</string>
+
+</strings>

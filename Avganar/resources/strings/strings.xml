@@ -3,7 +3,7 @@
     <!-- app -->
 
     <string id="app_name" scope="glance">KA.live</string>
-    <string id="app_version" scope="glance">v1.8.0</string>
+    <string id="app_version" scope="glance">v1.0.0</string>
 
     <!-- message -->
 
@@ -15,7 +15,6 @@
 
     <!-- response message -->
     <string id="msg_i_stops_none">No Nearby Stops</string>
-    <string id="msg_i_stops_outside_bounds">Only Available in Stockholm</string>
     <string id="msg_i_departures_none">No Departures</string>
 
     <!-- request error -->
@@ -59,20 +58,16 @@
     <string id="itm_detail_departure_minutes_short">m</string>
     <string id="itm_detail_departure_minutes_tiny">'</string>
     <string id="lbl_detail_mode_letter_bus">B</string>
-    <string id="lbl_detail_mode_letter_metro">T</string>
-    <string id="lbl_detail_mode_letter_train">J</string>
-    <string id="lbl_detail_mode_letter_tram">L</string>
-    <string id="lbl_detail_mode_letter_ship">F</string>
+    <string id="lbl_detail_mode_letter_train">R</string>
+    <string id="lbl_detail_mode_letter_tram">T</string>
     <string id="lbl_detail_mode_letter_unknown">?</string>
     <string id="lbl_detail_deviation_none">No Deviations</string>
 
     <!-- modes menu -->
     <string id="itm_modes_continue">Continue</string>
     <string id="itm_modes_bus">Buses</string>
-    <string id="itm_modes_metro">Metro</string>
     <string id="itm_modes_train">Trains</string>
-    <string id="itm_modes_tram">Light rail</string>
-    <string id="itm_modes_ship">Boats</string>
+    <string id="itm_modes_tram">Trams</string>
 
     <!-- dialog -->
     <string id="lbl_dialog_no_favorites_title">No Favorites</string>
@@ -97,6 +92,6 @@
     <string id="itm_settings_minute_symbol">Minute Symbol</string>
 
     <!-- info -->
-    <string id="lbl_info_about">Made by Felix Wallin.\n\nAPIs are provided by Trafiklab.</string>
+    <string id="lbl_info_about">Made by Lukas Werling. Based on Avgånär by Felix Wallin.\n\nNot an official KVV app. KVV is not liable for any contents.</string>
 
 </strings>

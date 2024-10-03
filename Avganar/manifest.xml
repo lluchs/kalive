@@ -97,8 +97,8 @@ If not, see <https://www.gnu.org/licenses/>.
             <iq:uses-permission id="Positioning"/>
         </iq:permissions>
         <iq:languages>
+            <iq:language>deu</iq:language>
             <iq:language>eng</iq:language>
-            <iq:language>swe</iq:language>
         </iq:languages>
         <iq:barrels/>
     </iq:application>
