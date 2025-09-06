@@ -5,11 +5,17 @@ use anyhow::Context;
 use anyhow::Result;
 use chrono::prelude::*;
 use quick_xml::events::{BytesText, Event};
-use quick_xml::reader::Reader;
+use quick_xml::name::{Namespace, ResolveResult::Bound};
+use quick_xml::reader::NsReader;
 use quick_xml::writer::Writer;
 
 use crate::SituationRef;
 use crate::{Departure, Situation, Stop};
+
+/// XML namespace for Trias
+const XMLNS_TRIAS: &[u8] = "http://www.vdv.de/trias".as_bytes();
+/// XML namespace for Siri
+const XMLNS_SIRI: &[u8] = "http://www.siri.org.uk/siri".as_bytes();
 
 const STOP_EVENT_REQUEST_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <Trias version="1.1" xmlns="http://www.vdv.de/trias" xmlns:siri="http://www.siri.org.uk/siri" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -41,7 +47,7 @@ pub fn format_stop_event_request(
     req_ref: &str,
     stop_point_ref: &str,
 ) -> String {
-    let mut reader = Reader::from_str(STOP_EVENT_REQUEST_XML);
+    let mut reader = NsReader::from_str(STOP_EVENT_REQUEST_XML);
     let mut writer = Writer::new(std::io::Cursor::new(Vec::new()));
     let req_timestamp_rfc3339 = req_timestamp.to_rfc3339();
     loop {
@@ -87,7 +93,7 @@ fn process_departure(d: &mut Departure) {
 
 /// Parse a TRIAS StopEventResponse XML.
 pub fn parse_stop_event_response(xml: &str) -> Result<(Vec<Departure>, Vec<Situation>)> {
-    let mut reader = Reader::from_str(xml);
+    let mut reader = NsReader::from_str(xml);
     let mut situations = Vec::new();
     let mut situation_ref: SituationRef = Default::default();
     let mut departures = Vec::new();
@@ -107,60 +113,65 @@ pub fn parse_stop_event_response(xml: &str) -> Result<(Vec<Departure>, Vec<Situa
     }
 
     loop {
-        match reader.read_event_into(&mut buf)? {
-            Event::Eof => break,
-            Event::Start(e) => match e.name().as_ref() {
-                b"StopEventResult" => {
+        match reader.read_resolved_event_into(&mut buf)? {
+            (_, Event::Eof) => break,
+            (Bound(Namespace(ns)), Event::Start(e)) => match (ns, e.local_name().as_ref()) {
+                (XMLNS_TRIAS, b"StopEventResult") => {
                     current_departure = Some(Departure::default());
                 }
-                b"Situations" => {
+                (XMLNS_TRIAS, b"Situations") => {
                     situations = parse_situations(&mut reader)?;
                 }
-                b"Text" | b"TimetabledTime" | b"EstimatedTime" | b"PtMode" | b"ParticipantRef"
-                | b"SituationNumber" | b"Cancelled" => {
+                (XMLNS_TRIAS, b"Text")
+                | (XMLNS_TRIAS, b"TimetabledTime")
+                | (XMLNS_TRIAS, b"EstimatedTime")
+                | (XMLNS_TRIAS, b"PtMode")
+                | (XMLNS_SIRI, b"ParticipantRef")
+                | (XMLNS_SIRI, b"SituationNumber")
+                | (XMLNS_TRIAS, b"Cancelled") => {
                     current_text = Some(String::new());
                     in_text = true;
                 }
 
                 _ => {}
             },
-            Event::Text(e) => {
+            (_, Event::Text(e)) => {
                 if in_text {
                     if let Some(ref mut t) = current_text {
                         t.push_str(&String::from_utf8_lossy(e.as_ref()));
                     }
                 }
             }
-            Event::End(e) => match e.name().as_ref() {
-                b"StopEventResult" => {
+            (Bound(Namespace(ns)), Event::End(e)) => match (ns, e.local_name().as_ref()) {
+                (XMLNS_TRIAS, b"StopEventResult") => {
                     let mut d = current_departure.take().unwrap();
                     process_departure(&mut d);
                     departures.push(d);
                 }
-                b"Text" => in_text = false,
-                b"PlannedBay" => set_to_text!(bay),
-                b"TimetabledTime" => set_to_text!(timetable_time),
-                b"EstimatedTime" => set_to_text!(estimated_time),
-                b"PtMode" => set_to_text!(mode),
-                b"Name" => set_to_text!(mode_name),
-                b"PublishedLineName" => set_to_text!(line),
-                b"DestinationText" => set_to_text!(destination),
-                b"ParticipantRef" => {
+                (XMLNS_TRIAS, b"Text") => in_text = false,
+                (XMLNS_TRIAS, b"PlannedBay") => set_to_text!(bay),
+                (XMLNS_TRIAS, b"TimetabledTime") => set_to_text!(timetable_time),
+                (XMLNS_TRIAS, b"EstimatedTime") => set_to_text!(estimated_time),
+                (XMLNS_TRIAS, b"PtMode") => set_to_text!(mode),
+                (XMLNS_TRIAS, b"Name") => set_to_text!(mode_name),
+                (XMLNS_TRIAS, b"PublishedLineName") => set_to_text!(line),
+                (XMLNS_TRIAS, b"DestinationText") => set_to_text!(destination),
+                (XMLNS_SIRI, b"ParticipantRef") => {
                     if let Some(text) = current_text.take() {
                         situation_ref.participant_ref = text.into();
                     }
                 }
-                b"SituationNumber" => {
+                (XMLNS_SIRI, b"SituationNumber") => {
                     if let Some(text) = current_text.take() {
                         situation_ref.situation_number = text.into();
                     }
                 }
-                b"SituationFullRef" => {
+                (XMLNS_TRIAS, b"SituationFullRef") => {
                     if let Some(ref mut dep) = current_departure {
                         dep.situations.push(std::mem::take(&mut situation_ref));
                     }
                 }
-                b"Cancelled" => {
+                (XMLNS_TRIAS, b"Cancelled") => {
                     if let Some(text) = current_text.take() {
                         if text == "true" {
                             if let Some(ref mut dep) = current_departure {
@@ -178,7 +189,7 @@ pub fn parse_stop_event_response(xml: &str) -> Result<(Vec<Departure>, Vec<Situa
     Ok((departures, situations))
 }
 
-fn parse_situations<R: BufRead>(reader: &mut Reader<R>) -> Result<Vec<Situation>> {
+fn parse_situations<R: BufRead>(reader: &mut NsReader<R>) -> Result<Vec<Situation>> {
     let mut situations: Vec<Situation> = Vec::new();
     let mut situation: Situation = Default::default();
     let mut in_text = false;
@@ -192,46 +203,53 @@ fn parse_situations<R: BufRead>(reader: &mut Reader<R>) -> Result<Vec<Situation>
         };
     }
     loop {
-        match reader.read_event_into(&mut buf)? {
-            Event::Eof => bail!("unexpected EOF in PtSituation"),
-            Event::Start(e) => match e.name().as_ref() {
-                b"PtSituation" => {
+        match reader.read_resolved_event_into(&mut buf)? {
+            (_, Event::Eof) => bail!("unexpected EOF in PtSituation"),
+            (Bound(Namespace(ns)), Event::Start(e)) => match (ns, e.local_name().as_ref()) {
+                (XMLNS_TRIAS, b"PtSituation") => {
                     situation = Default::default();
                 }
-                b"ParticipantRef" | b"SituationNumber" | b"CreationTime" | b"StartTime"
-                | b"EndTime" | b"Priority" | b"ScopeType" | b"Summary" | b"Description"
-                | b"Detail" => {
+                (XMLNS_SIRI, b"ParticipantRef")
+                | (XMLNS_SIRI, b"SituationNumber")
+                | (XMLNS_SIRI, b"CreationTime")
+                | (XMLNS_SIRI, b"StartTime")
+                | (XMLNS_SIRI, b"EndTime")
+                | (XMLNS_SIRI, b"Priority")
+                | (XMLNS_SIRI, b"ScopeType")
+                | (XMLNS_SIRI, b"Summary")
+                | (XMLNS_SIRI, b"Description")
+                | (XMLNS_SIRI, b"Detail") => {
                     current_text = Some(String::new());
                     in_text = true;
                 }
                 _ => {}
             },
-            Event::Text(e) => {
+            (_, Event::Text(e)) => {
                 if in_text {
                     if let Some(ref mut t) = current_text {
                         t.push_str(&String::from_utf8_lossy(e.as_ref()));
                     }
                 }
             }
-            Event::End(e) => match e.name().as_ref() {
-                b"Situations" => break,
-                b"PtSituation" => {
+            (Bound(Namespace(ns)), Event::End(e)) => match (ns, e.local_name().as_ref()) {
+                (XMLNS_TRIAS, b"Situations") => break,
+                (XMLNS_TRIAS, b"PtSituation") => {
                     situations.push(std::mem::take(&mut situation));
                 }
-                b"ParticipantRef" => set_to_text!(participant_ref),
-                b"SituationNumber" => set_to_text!(situation_number),
-                b"CreationTime" => set_to_text!(creation_time),
-                b"StartTime" => set_to_text!(validity_start_time),
-                b"EndTime" => set_to_text!(validity_end_time),
-                b"Priority" => {
+                (XMLNS_SIRI, b"ParticipantRef") => set_to_text!(participant_ref),
+                (XMLNS_SIRI, b"SituationNumber") => set_to_text!(situation_number),
+                (XMLNS_SIRI, b"CreationTime") => set_to_text!(creation_time),
+                (XMLNS_SIRI, b"StartTime") => set_to_text!(validity_start_time),
+                (XMLNS_SIRI, b"EndTime") => set_to_text!(validity_end_time),
+                (XMLNS_SIRI, b"Priority") => {
                     if let Some(text) = current_text.take() {
                         situation.priority = text.parse().unwrap_or_default();
                     }
                 }
-                b"ScopeType" => set_to_text!(scope_type),
-                b"Summary" => set_to_text!(summary),
-                b"Description" => set_to_text!(description),
-                b"Detail" => set_to_text!(detail),
+                (XMLNS_SIRI, b"ScopeType") => set_to_text!(scope_type),
+                (XMLNS_SIRI, b"Summary") => set_to_text!(summary),
+                (XMLNS_SIRI, b"Description") => set_to_text!(description),
+                (XMLNS_SIRI, b"Detail") => set_to_text!(detail),
                 _ => {}
             },
             _ => {}
@@ -275,7 +293,7 @@ pub fn format_location_information_request(
     latitude: f32,
     longitude: f32,
 ) -> String {
-    let mut reader = Reader::from_str(LOCATION_INFORMATION_REQUEST_XML);
+    let mut reader = NsReader::from_str(LOCATION_INFORMATION_REQUEST_XML);
     let mut writer = Writer::new(std::io::Cursor::new(Vec::new()));
     let req_timestamp_rfc3339 = req_timestamp.to_rfc3339();
     let latitude_str = latitude.to_string();
@@ -302,7 +320,7 @@ pub fn format_location_information_request(
 
 /// Parse a TRIAS LocationInformationResponse XML.
 pub fn parse_location_information_response(xml: &str) -> Result<Vec<Stop>> {
-    let mut reader = Reader::from_str(xml);
+    let mut reader = NsReader::from_str(xml);
     let mut locations = Vec::new();
     let mut current_location: Option<Stop> = None;
     let mut in_location = 0;
@@ -321,9 +339,9 @@ pub fn parse_location_information_response(xml: &str) -> Result<Vec<Stop>> {
     }
 
     loop {
-        match reader.read_event_into(&mut buf)? {
-            Event::Eof => break,
-            Event::Start(e) => match e.name().as_ref() {
+        match reader.read_resolved_event_into(&mut buf)? {
+            (_, Event::Eof) => break,
+            (Bound(Namespace(XMLNS_TRIAS)), Event::Start(e)) => match e.local_name().as_ref() {
                 b"Location" => {
                     // <Location> is weirdly nested
                     in_location += 1;
@@ -338,14 +356,14 @@ pub fn parse_location_information_response(xml: &str) -> Result<Vec<Stop>> {
 
                 _ => {}
             },
-            Event::Text(e) => {
+            (_, Event::Text(e)) => {
                 if in_text {
                     if let Some(ref mut t) = current_text {
                         t.push_str(&String::from_utf8_lossy(e.as_ref()));
                     }
                 }
             }
-            Event::End(e) => match e.name().as_ref() {
+            (Bound(Namespace(XMLNS_TRIAS)), Event::End(e)) => match e.local_name().as_ref() {
                 b"Location" => {
                     if in_location == 1 {
                         locations.push(current_location.take().unwrap());
